@@ -1,481 +1,164 @@
-Tentu, saya akan integrasikan lampiran skema JSON dan penyesuaian *timeout* ke dalam dokumen persyaratan produk yang sudah ada. Versi ini menjadi lebih lengkap dan siap untuk diimplementasikan.
-Performa & Skalabilitas
+# API Gateway with Fallback System
 
-Gunakan goroutines untuk paralel request API.
+A robust API gateway service with fallback capabilities for handling API failures gracefully. This system provides a reliable way to manage API dependencies and ensure service continuity even when upstream services experience issues.
 
-Cache hasil (Redis/in-memory) untuk mengurangi beban scraping.
+## Features
 
-Health check otomatis setiap X menit, update status di dashboard.
+- **API Fallback Mechanism**: Automatically serves cached responses when upstream APIs fail
+- **Rate Limiting**: Protects your services from overload
+- **Caching**: Improves performance and reduces load on backend services
+- **Health Monitoring**: Continuously checks the health of connected APIs
+- **Dashboard**: Web interface for monitoring and managing API endpoints
+- **Swagger Documentation**: Interactive API documentation
+- **Docker Support**: Easy deployment with Docker and Docker Compose
+- **CasaOS Integration**: Optimized for deployment on CasaOS
 
-Siap melayani ribuan user secara bersamaan.
+## Deployment Guide
 
-Tambah/hapus kategori.
+### Prerequisites
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- 256MB RAM minimum
+- 100MB storage space
 
-Tambah/hapus API utama & fallback.
+### Deployment Options
 
-Lihat log request & error.
+#### 1. Using the Deployment Script (Recommended)
 
-Lihat health check API (status OK/Timeout/Error).
+The repository includes a comprehensive deployment script (`deploy.sh`) that simplifies the deployment process:
 
-Jalankan tes manual pada API tertentu.
+```bash
+# Development deployment
+./deploy.sh dev
 
-Performa & Skalabilitas
+# Production deployment
+./deploy.sh prod
 
-Gunakan goroutines untuk paralel request API.
+# Deployment with Nginx reverse proxy
+./deploy.sh nginx
 
-Cache hasil (valkey/in-memory) untuk mengurangi beban scraping.
-
-Health check otomatis setiap X menit, update status di dashboard.
-
-Siap melayani ribuan user secara bersamaan.
------
-
-### **Dokumen Persyaratan Produk (PRD): Sistem Agregator API Dinamis dengan Fallback**
-
-**Versi 1.1**
-
-#### **1. Visi & Tujuan Utama**
-
-Membangun sebuah sistem API Gateway berbasis Golang yang tangguh, scalable, dan dinamis dengan nama proyek `apicategorywithfallback`. Sistem ini berfungsi sebagai *single source of truth* yang mengagregasi data dari berbagai API eksternal (terutama berbasis *web scraping*) berdasarkan kategori. Fitur utamanya adalah mekanisme *fallback* otomatis, validasi data yang ketat, caching cerdas, dan sebuah dashboard manajemen untuk mengelola sumber API tanpa perlu *re-deploy*.
-
-**Tujuan Bisnis:**
-
-  * Menyediakan data yang konsisten dan andal kepada *end-user* meskipun salah satu sumber API eksternal mengalami gangguan atau lambat.
-  * Mempermudah penambahan kategori dan sumber API baru di masa depan secara cepat.
-  * Mengurangi latensi dan beban pada API eksternal melalui *caching*.
-  * Memberikan visibilitas penuh terhadap kesehatan dan performa setiap API melalui dashboard.
-
------
-
-#### **2. Arsitektur & Logika Inti**
-
-##### **2.1. Manajemen Kategori & API Dinamis**
-
-  * **Sumber Konfigurasi**: Sistem harus memuat konfigurasi kategori dan daftar API dari sebuah database (misal: PostgreSQL, MongoDB) untuk memungkinkan perubahan *real-time* melalui dashboard.
-
-  * **Hierarki API**:
-
-      * Sistem memiliki beberapa **Kategori** (contoh: `anime`, `drakor`).
-      * Setiap **Kategori** memiliki satu atau lebih **API Utama (Primary API)**.
-      * Setiap **API Utama** memiliki urutan prioritas **API Fallback (Fallback APIs)**.
-
-    **Contoh Struktur Konfigurasi (JSON):**
-
-    ```json
-    {
-      "categories": [
-        {
-          "name": "anime",
-          "is_active": true,
-          "endpoints": [
-            {
-              "path": "/api/v1/home",
-              "primary_apis": [
-                { "source_name": "samehadaku_v1", "base_url": "http://api_source_1/v1", "priority": 1 },
-                { "source_name": "otakudesu_v3", "base_url": "http://api_source_2/v1", "priority": 2 }
-              ],
-              "fallback_apis": {
-                "samehadaku_v1": ["http://fallback1/v1", "http://fallback2/v1"],
-                "otakudesu_v3": ["http://fallback3/v1"]
-              }
-            }
-          ]
-        }
-      ]
-    }
-    ```
-
-##### **2.2. Alur Request & Mekanisme Fallback**
-
-1.  *Client* mengirim *request* ke *endpoint* sistem, misal: `GET /api/v1/home?category=anime`.
-2.  Sistem mengidentifikasi kategori (`anime`) dan *endpoint* (`/home`).
-3.  Sistem secara *concurrent* (menggunakan *goroutines*) mengirim *request* ke semua **API Utama** untuk kategori tersebut.
-4.  Untuk setiap *response* yang diterima:
-      * **Validasi Confidence Score**: Jika `confidence_score < 0.5`, *response* dianggap tidak valid. Segera proses *fallback* untuk API tersebut.
-      * **Validasi Integritas Data (Schema Validation)**: *Response* harus divalidasi berdasarkan skema JSON yang telah didefinisikan (lihat **Lampiran A**). Periksa apakah *field* wajib (seperti `url`, `judul`, `cover`, `streaming_url`) tidak *null*, tidak kosong, dan bukan *placeholder* error. Jika validasi gagal, anggap *response* tidak valid dan proses *fallback*.
-5.  *Response* valid pertama yang diterima (berdasarkan prioritas API Utama) akan langsung di-*cache* dan dikirim kembali ke *client*.
-6.  Jika semua API Utama dan *fallback*-nya gagal, kembalikan *response* error yang sesuai (misal: `503 Service Unavailable`).
-
------
-
-#### **3. Spesifikasi Teknis**
-
-##### **3.1. Validasi Skema & Data**
-
-  * Buat modul `validator` khusus yang berisi definisi skema (struct Golang) untuk setiap *endpoint* seperti yang terlampir.
-  * Validator ini harus memeriksa keberadaan *field*, tipe data, dan format (misal: URL valid).
-  * **Field Wajib Universal**: `url`, `judul` atau `title`, `anime_slug` atau `slug`, `cover` atau `cover_url`. Untuk *endpoint* episode, tambahkan `streaming_url`.
-  * Kegagalan validasi adalah pemicu *fallback*.
-
-##### **3.2. Caching (Redis)**
-
-  * Gunakan Redis untuk *caching*.
-  * Hanya *response* yang lolos semua validasi (`confidence_score >= 0.5` dan validasi skema) yang boleh di-*cache*.
-  * **Struktur Cache Key**: `category:endpoint:parameter_hash`. Contoh: `anime:/api/v1/search:query=naruto`.
-  * Setel TTL (Time-To-Live) yang sesuai untuk setiap *endpoint* (misal: 15 menit untuk `/home`, 1 jam untuk `/anime-detail`).
-
-##### **3.3. Performa & Skalabilitas**
-
-  * **Concurrency**: Manfaatkan *goroutines* dan *channels* untuk menangani *request* ke API eksternal secara paralel.
-  * **Timeout**: Mengingat sumber API berasal dari *scraping* yang bisa lambat, terapkan *timeout* yang lebih longgar namun tetap terkontrol. **Rekomendasi awal: 15-20 detik** untuk setiap *request* ke API eksternal. Nilai ini harus bisa dikonfigurasi.
-  * **Rate Limiting**: Implementasikan *rate limiting* per IP untuk mencegah penyalahgunaan.
-  * **Background Worker (Health Check)**: Sebuah *worker* yang berjalan di latar belakang harus secara periodik (misal: setiap 10 menit) melakukan *health check* ke semua API yang terdaftar. Hasilnya (OK, Timeout, Error) harus diperbarui di dashboard.
-
-##### **3.4. Dashboard Manajemen (Admin)**
-
-  * Buat antarmuka web sederhana menggunakan *template* HTML Golang atau *framework* frontend.
-  * **Fitur Wajib:**
-      * CRUD Kategori & API.
-      * Log Viewer.
-      * Health Check Status.
-      * Statistik (jumlah *request*, tingkat *fallback*, tingkat *error*) per API.
-
------
-
-#### **4. Definisi Endpoint**
-
-Sistem harus mengimplementasikan *endpoint-endpoint* berikut. Skema *response* yang diharapkan untuk setiap *endpoint* terlampir dalam **Lampiran A**.
-Sebaiknya pisah secara logis di backend, tapi fleksibel di frontend.
-Jadi, API endpoint bisa mengakomodasi query per kategori (?category=anime) atau semua kategori (?category=all).
-
-Dengan begini, kamu bisa menambah kategori tanpa ngoding ulang karena sistem sudah dinamis, cukup tambah konfigurasi kategori di database / config file.
-Mendukung query:
-
-GET ?category=anime → Semua API utama kategori anime
-
-GET ?category=all → Semua kategori
-  * `GET /api/v1/home`
-  * `GET /api/v1/jadwal-rilis`
-  * `GET /api/v1/jadwal-rilis/{day}`
-  * `GET /api/v1/anime-terbaru`
-  * `GET /api/v1/movie`
-  * `GET /api/v1/anime-detail`
-  * `GET /api/v1/episode-detail`
-  * `GET /api/v1/search`
-
------
-
-#### **5. Struktur Proyek (Rekomendasi)**
-
-```
-apicategorywithfallback/
-├── cmd/main.go
-├── pkg/
-│   ├── config/
-│   ├── database/
-│   ├── cache/
-│   ├── logger/
-│   └── validator/
-├── internal/
-│   ├── api/
-│   ├── domain/
-│   ├── service/
-│   ├── repository/
-│   └── dashboard/
-├── web/
-├── README.md
-└── go.mod
+# Show all available commands
+./deploy.sh help
 ```
 
------
+#### 2. Manual Docker Deployment
 
-### **Lampiran A: Skema Struktur JSON per Endpoint**
+```bash
+# Build the Docker image
+make docker-build
 
-Berikut adalah detail struktur JSON yang harus divalidasi untuk setiap *response* dari API eksternal.
+# Start the services
+docker-compose up -d
 
-\<details\>
-\<summary\>\<strong\>1. GET /api/v1/home/\</strong\>\</summary\>
+# Check application health
+curl http://localhost:8080/health
 
-```json
-{
-  "confidence_score": "number",
-  "message": "string",
-  "source": "string",
-  "top10": [
-    {
-      "judul": "string",
-      "url": "string",
-      "anime_slug": "string",
-      "rating": "string",
-      "cover": "string",
-      "genres": ["string"]
-    }
-  ],
-  "new_eps": [
-    {
-      "judul": "string",
-      "url": "string",
-      "anime_slug": "string",
-      "episode": "string",
-      "rilis": "string",
-      "cover": "string"
-    }
-  ],
-  "movies": [
-    {
-      "judul": "string",
-      "url": "string",
-      "anime_slug": "string",
-      "tanggal": "string",
-      "cover": "string",
-      "genres": ["string"]
-    }
-  ],
-  "jadwal_rilis": {
-    "DayName": [
-      {
-        "title": "string",
-        "url": "string",
-        "anime_slug": "string",
-        "cover_url": "string",
-        "type": "string",
-        "score": "string",
-        "genres": ["string"],
-        "release_time": "string"
-      }
-    ]
-  }
-}
+# View logs
+docker-compose logs -f apifallback
 ```
 
-\</details\>
+#### 3. CasaOS Deployment
 
-\<details\>
-\<summary\>\<strong\>2. GET /api/v1/jadwal-rilis/\</strong\>\</summary\>
+This application is optimized for CasaOS with proper labels and configuration:
 
-```json
-{
-  "confidence_score": "number",
-  "message": "string",
-  "source": "string",
-  "data": {
-    "DayName": [
-      {
-        "title": "string",
-        "url": "string",
-        "anime_slug": "string",
-        "cover_url": "string",
-        "type": "string",
-        "score": "string",
-        "genres": ["string"],
-        "release_time": "string"
-      }
-    ]
-  }
-}
+1. Build the Docker image:
+   ```bash
+   make docker-build
+   ```
+
+2. Save the image to transfer to your CasaOS server:
+   ```bash
+   docker save apifallback:latest > apifallback.tar
+   ```
+
+3. Transfer the image and docker-compose.yml to your CasaOS server
+
+4. On the CasaOS server:
+   ```bash
+   docker load < apifallback.tar
+   docker-compose up -d
+   ```
+
+## Docker Compose Configuration
+
+The application uses the following docker-compose.yml configuration:
+
+```yaml
+services:
+  apifallback:
+    image: apifallback:latest
+    container_name: apifallback
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      DATABASE_PATH: /app/data/data.db
+      REDIS_ADDR: redis:6379
+      REDIS_DB: 0
+      API_TIMEOUT: 20s
+      MAX_CONCURRENCY: 10
+      RATE_LIMIT: 100
+      RATE_LIMIT_WINDOW: 1m
+      HEALTH_CHECK_INTERVAL: 10m
+      GIN_MODE: release
+    volumes:
+      - apifallback_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - apifallback_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "casaos.name=API Fallback"
+      - "casaos.description=API Category with Fallback Service"
+      - "casaos.icon=https://cdn-icons-png.flaticon.com/512/2103/2103633.png"
+      - "casaos.port=8080"
+      - "casaos.scheme=http"
+
+  redis:
+    image: valkey/valkey:7-alpine
+    container_name: apifallback_redis
+    restart: unless-stopped
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - apifallback_network
+    command: valkey-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  apifallback_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  apifallback_network:
+    driver: bridge
 ```
 
-\</details\>
+## Access the Application
 
-\<details\>
-\<summary\>\<strong\>3. GET /api/v1/jadwal-rilis/{day}\</strong\>\</summary\>
+After deployment, you can access the application at:
 
-```json
-{
-  "confidence_score": "number",
-  "message": "string",
-  "source": "string",
-  "data": [
-    {
-      "title": "string",
-      "url": "string",
-      "anime_slug": "string",
-      "cover_url": "string",
-      "type": "string",
-      "score": "string",
-      "genres": ["string"],
-      "release_time": "string"
-    }
-  ]
-}
-```
+- Web Dashboard: http://localhost:8080/dashboard/
+- API Documentation: http://localhost:8080/swagger/
+- Health Check: http://localhost:8080/health
 
-\</details\>
+## For More Information
 
-\<details\>
-\<summary\>\<strong\>4. GET /api/v1/anime-terbaru/\</strong\>\</summary\>
-
-```json
-{
-  "confidence_score": "number",
-  "message": "string",
-  "source": "string",
-  "data": [
-    {
-      "judul": "string",
-      "url": "string",
-      "anime_slug": "string",
-      "episode": "string",
-      "uploader": "string",
-      "rilis": "string",
-      "cover": "string"
-    }
-  ]
-}
-```
-
-\</details\>
-
-\<details\>
-\<summary\>\<strong\>5. GET /api/v1/movie/\</strong\>\</summary\>
-
-```json
-{
-  "confidence_score": "number",
-  "message": "string",
-  "source": "string",
-  "data": [
-    {
-      "judul": "string",
-      "url": "string",
-      "anime_slug": "string",
-      "status": "string",
-      "skor": "string",
-      "sinopsis": "string",
-      "views": "string",
-      "cover": "string",
-      "genres": ["string"],
-      "tanggal": "string"
-    }
-  ]
-}
-```
-
-\</details\>
-
-\<details\>
-\<summary\>\<strong\>6. GET /api/v1/anime-detail/\</strong\>\</summary\>
-
-```json
-{
-  "confidence_score": "number",
-  "message": "string",
-  "source": "string",
-  "judul": "string",
-  "url": "string",
-  "anime_slug": "string",
-  "cover": "string",
-  "episode_list": [
-    {
-      "episode": "string",
-      "title": "string",
-      "url": "string",
-      "episode_slug": "string",
-      "release_date": "string"
-    }
-  ],
-  "recommendations": [
-    {
-      "title": "string",
-      "url": "string",
-      "anime_slug": "string",
-      "cover_url": "string",
-      "rating": "string",
-      "episode": "string"
-    }
-  ],
-  "status": "string",
-  "tipe": "string",
-  "skor": "string",
-  "penonton": "string",
-  "sinopsis": "string",
-  "genre": ["string"],
-  "details": {
-    "Japanese": "string",
-    "Synonyms": "string",
-    "English": "string",
-    "Status": "string",
-    "Type": "string",
-    "Source": "string",
-    "Duration": "string",
-    "Total Episode": "string",
-    "Studio": "string",
-    "Producers": "string",
-    "Released:": "string"
-  },
-  "rating": {
-    "score": "string",
-    "users": "string"
-  }
-}
-```
-
-\</details\>
-
-\<details\>
-\<summary\>\<strong\>7. GET /api/v1/episode-detail/\</strong\>\</summary\>
-
-```json
-{
-  "confidence_score": "number",
-  "message": "string",
-  "source": "string",
-  "title": "string",
-  "thumbnail_url": "string",
-  "streaming_servers": [
-    {
-      "server_name": "string",
-      "streaming_url": "string"
-    }
-  ],
-  "release_info": "string",
-  "download_links": {
-    "FormatName": {
-      "QualityName": [
-        {
-          "provider": "string",
-          "url": "string"
-        }
-      ]
-    }
-  },
-  "navigation": {
-    "previous_episode_url": "string | null",
-    "all_episodes_url": "string",
-    "next_episode_url": "string | null"
-  },
-  "anime_info": {
-    "title": "string",
-    "thumbnail_url": "string",
-    "synopsis": "string",
-    "genres": ["string"]
-  },
-  "other_episodes": [
-    {
-      "title": "string",
-      "url": "string",
-      "thumbnail_url": "string",
-      "release_date": "string"
-    }
-  ]
-}
-```
-
-\</details\>
-
-\<details\>
-\<summary\>\<strong\>8. GET /api/v1/search/\</strong\>\</summary\>
-
-```json
-{
-  "confidence_score": "number",
-  "message": "string",
-  "source": "string",
-  "data": [
-    {
-      "judul": "string",
-      "url": "string",
-      "anime_slug": "string",
-      "status": "string",
-      "tipe": "string",
-      "skor": "string",
-      "penonton": "string",
-      "sinopsis": "string",
-      "genre": ["string"],
-      "cover": "string"
-    }
-  ]
-}
-```
-
-\</details\>
+For detailed deployment instructions and configuration options, see [DEPLOYMENT.md](DEPLOYMENT.md).
