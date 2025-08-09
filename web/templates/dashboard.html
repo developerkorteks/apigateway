@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .navbar-brand h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .navbar-brand .status-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .navbar-nav {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .nav-link.active {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        .card.success {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .card.warning {
+            border-left: 4px solid #FF9800;
+        }
+
+        .card.error {
+            border-left: 4px solid #F44336;
+        }
+
+        .card.info {
+            border-left: 4px solid #2196F3;
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-ok { background-color: #4CAF50; }
+        .status-warning { background-color: #FF9800; }
+        .status-error { background-color: #F44336; }
+
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: opacity 0.2s ease;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1rem;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h1>🚀 API Fallback</h1>
+                <span class="status-badge" id="system-status-badge">System Online</span>
+            </div>
+            <div class="navbar-nav">
+                <a href="/dashboard/" class="nav-link active">📊 Dashboard</a>
+                <a href="/dashboard/management" class="nav-link">⚙️ Management</a>
+                <a href="/swagger/index.html" class="nav-link" target="_blank">📚 API Docs</a>
+                <div class="system-status">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="api-count">Loading...</span>
+                </div>
+            </div>
+        </nav>
+    </div>
+
+    <div class="container">
+        <!-- Statistics Cards -->
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>Total Requests</h3>
+                <div class="stat-value" id="total-requests">-</div>
+                <div class="stat-label">Last 24 hours</div>
+            </div>
+            
+            <div class="card">
+                <h3>Success Rate</h3>
+                <div class="stat-value" id="success-rate">-</div>
+                <div class="stat-label">Successful responses</div>
+            </div>
+            
+            <div class="card">
+                <h3>Fallback Usage</h3>
+                <div class="stat-value" id="fallback-usage">-</div>
+                <div class="stat-label">Fallback API calls</div>
+            </div>
+            
+            <div class="card">
+                <h3>Average Response Time</h3>
+                <div class="stat-value" id="avg-response-time">-</div>
+                <div class="stat-label">Milliseconds</div>
+            </div>
+            
+            <div class="card" id="api-health-card">
+                <h3>API Health Status</h3>
+                <div class="stat-value" id="healthy-apis">-</div>
+                <div class="stat-label" id="api-health-label">APIs Online</div>
+            </div>
+            
+            <div class="card info">
+                <h3>Active Endpoints</h3>
+                <div class="stat-value" id="active-endpoints">-</div>
+                <div class="stat-label">Configured endpoints</div>
+            </div>
+        </div>
+
+        <!-- Health Status -->
+        <div class="table-container">
+            <h3>API Health Status</h3>
+            <div style="margin-bottom: 1rem;">
+                <button id="manualHealthCheck" class="btn" onclick="runManualHealthCheck()">
+                    🔄 Check All APIs Now
+                </button>
+                <span id="healthCheckStatus" style="margin-left: 1rem; color: #666;"></span>
+            </div>
+            <div id="health-status-loading" class="loading">Loading health status...</div>
+            <div id="health-status-error" class="error" style="display: none;"></div>
+            <table id="health-status-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>API Source</th>
+                        <th>Response Time</th>
+                        <th>Last Checked</th>
+                        <th>Error Message</th>
+                    </tr>
+                </thead>
+                <tbody id="health-status-body">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- API Source Information -->
+        <div class="table-container" style="margin-top: 2rem;">
+            <h3>API Source Configuration & Filtering</h3>
+            <p style="color: #666; margin-bottom: 1rem;">
+                This shows how category filters are applied to select appropriate API sources for different content types.
+            </p>
+            <div id="sources-loading" class="loading">Loading API sources...</div>
+            <div id="sources-error" class="error" style="display: none;"></div>
+            <table id="sources-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Source Name</th>
+                        <th>Endpoint</th>
+                        <th>Category Filter</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Base URL</th>
+                    </tr>
+                </thead>
+                <tbody id="sources-body">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recent Enhanced Requests -->
+        <div class="table-container" style="margin-top: 2rem;">
+            <h3>Recent API Requests with Source Information</h3>
+            <p style="color: #666; margin-bottom: 1rem;">
+                Enhanced request logs showing which API sources were used, categories applied, and fallback information.
+            </p>
+            <div id="logs-loading" class="loading">Loading request logs...</div>
+            <div id="logs-error" class="error" style="display: none;"></div>
+            <table id="logs-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Endpoint</th>
+                        <th>Category Filter</th>
+                        <th>Source Used</th>
+                        <th>Fallback Chain</th>
+                        <th>Response Time</th>
+                        <th>Total Attempts</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                // Load statistics
+                const statsResponse = await fetch('/dashboard/stats');
+                const statsData = await statsResponse.json();
+                
+                if (statsData.status === 'success') {
+                    const totalRequests = statsData.data.total_requests || 0;
+                    const successfulRequests = statsData.data.successful_requests || 0;
+                    const successRate = totalRequests > 0 ? Math.round((successfulRequests / totalRequests) * 100) : 100;
+                    
+                    document.getElementById('total-requests').textContent = totalRequests;
+                    document.getElementById('success-rate').textContent = successRate + '%';
+                    document.getElementById('fallback-usage').textContent = statsData.data.fallback_usage || '0';
+                    document.getElementById('avg-response-time').textContent = 
+                        Math.round(statsData.data.average_response_time || 0) + 'ms';
+                    
+                    // Update card colors based on success rate
+                    const successCard = document.querySelector('#success-rate').closest('.card');
+                    successCard.className = 'card ' + (successRate >= 80 ? 'success' : successRate >= 50 ? 'warning' : 'error');
+                }
+            } catch (error) {
+                console.error('Failed to load statistics:', error);
+            }
+
+            // Load health status
+            try {
+                const healthResponse = await fetch('/dashboard/health');
+                const healthData = await healthResponse.json();
+                
+                if (healthData.status === 'success' && healthData.data) {
+                    const healthyCount = healthData.data.filter(api => api.status === 'healthy').length;
+                    const totalCount = healthData.data.length;
+                    const healthPercentage = totalCount > 0 ? Math.round((healthyCount / totalCount) * 100) : 100;
+                    
+                    document.getElementById('healthy-apis').textContent = `${healthyCount}/${totalCount}`;
+                    document.getElementById('api-health-label').textContent = `${healthPercentage}% Healthy`;
+                    document.getElementById('api-count').textContent = `${healthyCount}/${totalCount} APIs Online`;
+                    
+                    // Update API health card color
+                    const healthCard = document.getElementById('api-health-card');
+                    healthCard.className = 'card ' + (healthPercentage >= 80 ? 'success' : healthPercentage >= 50 ? 'warning' : 'error');
+                    
+                    // Update status dot color
+                    const statusDot = document.getElementById('status-dot');
+                    statusDot.style.background = healthPercentage >= 80 ? '#4CAF50' : healthPercentage >= 50 ? '#FF9800' : '#F44336';
+                    
+                    // Update system status badge
+                    const statusBadge = document.getElementById('system-status-badge');
+                    statusBadge.textContent = healthPercentage >= 80 ? 'System Online' : healthPercentage >= 50 ? 'Partial Outage' : 'System Issues';
+                }
+                
+                // Load endpoints count
+                const endpointsResponse = await fetch('/dashboard/endpoints');
+                const endpointsData = await endpointsResponse.json();
+                
+                if (endpointsData.status === 'success' && endpointsData.data) {
+                    document.getElementById('active-endpoints').textContent = endpointsData.data.length;
+                }
+                
+                document.getElementById('health-status-loading').style.display = 'none';
+                
+                if (healthData.status === 'success') {
+                    displayHealthStatus(healthData.data);
+                } else {
+                    document.getElementById('health-status-error').textContent = 
+                        healthData.error || 'Failed to load health status';
+                    document.getElementById('health-status-error').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('health-status-loading').style.display = 'none';
+                document.getElementById('health-status-error').textContent = 'Failed to load health status';
+                document.getElementById('health-status-error').style.display = 'block';
+            }
+
+            // Load request logs
+            try {
+                const logsResponse = await fetch('/dashboard/logs?limit=50');
+                const logsData = await logsResponse.json();
+                
+                document.getElementById('logs-loading').style.display = 'none';
+                
+                if (logsData.status === 'success') {
+                    displayRequestLogs(logsData.data);
+                } else {
+                    document.getElementById('logs-error').textContent = 
+                        logsData.error || 'Failed to load request logs';
+                    document.getElementById('logs-error').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('logs-loading').style.display = 'none';
+                document.getElementById('logs-error').textContent = 'Failed to load request logs';
+                document.getElementById('logs-error').style.display = 'block';
+            }
+
+            // Load API sources configuration
+            try {
+                const sourcesResponse = await fetch('/dashboard/api-sources');
+                const sourcesData = await sourcesResponse.json();
+                
+                document.getElementById('sources-loading').style.display = 'none';
+                
+                if (sourcesData.status === 'success') {
+                    displayAPISources(sourcesData.data);
+                } else {
+                    document.getElementById('sources-error').textContent = 
+                        sourcesData.error || 'Failed to load API sources';
+                    document.getElementById('sources-error').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('sources-loading').style.display = 'none';
+                document.getElementById('sources-error').textContent = 'Failed to load API sources configuration';
+                document.getElementById('sources-error').style.display = 'block';
+            }
+        }
+
+        // Manual health check function
+        async function runManualHealthCheck() {
+            const button = document.getElementById('manualHealthCheck');
+            const status = document.getElementById('healthCheckStatus');
+            
+            // Disable button and show loading
+            button.disabled = true;
+            button.textContent = '🔄 Checking...';
+            status.textContent = 'Running health checks...';
+            status.style.color = '#666';
+            
+            try {
+                const response = await fetch('/dashboard/health/check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    status.textContent = `✅ Checked ${data.data.total_checked} APIs - ${data.data.healthy} healthy, ${data.data.unhealthy} unhealthy (${data.data.timestamp})`;
+                    status.style.color = '#4CAF50';
+                    
+                    // Reload health status to show updated data
+                    setTimeout(() => {
+                        loadDashboardData(); // Reload all data
+                    }, 1000);
+                } else {
+                    status.textContent = '❌ Health check failed: ' + (data.error || 'Unknown error');
+                    status.style.color = '#F44336';
+                }
+            } catch (error) {
+                status.textContent = '❌ Error running health check: ' + error.message;
+                status.style.color = '#F44336';
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.textContent = '🔄 Check All APIs Now';
+            }
+        }
+
+        function displayHealthStatus(healthData) {
+            const tbody = document.getElementById('health-status-body');
+            tbody.innerHTML = '';
+
+            if (!healthData || healthData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">No health data available</td></tr>';
+            } else {
+                healthData.forEach(item => {
+                    const row = document.createElement('tr');
+                    
+                    const statusClass = item.status === 'healthy' ? 'status-ok' : 
+                                       item.status === 'timeout' ? 'status-warning' : 'status-error';
+                    
+                    const statusText = item.status === 'healthy' ? 'Healthy' : 
+                                      item.status === 'unhealthy' ? 'Unhealthy' : 
+                                      item.status.toUpperCase();
+                    
+                    row.innerHTML = `
+                        <td><span class="status-indicator ${statusClass}"></span>${statusText}</td>
+                        <td>${item.source_name || 'API Source ' + item.api_source_id}</td>
+                        <td>${item.response_time || 0}ms</td>
+                        <td>${item.checked_at || 'Never'}</td>
+                        <td>${item.error_message || '-'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            document.getElementById('health-status-table').style.display = 'table';
+        }
+
+        function displayAPISources(sourcesData) {
+            const tbody = document.getElementById('sources-body');
+            tbody.innerHTML = '';
+
+            if (!sourcesData || sourcesData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">No API sources configured</td></tr>';
+            } else {
+                // Group sources by category for better display
+                const categories = {};
+                sourcesData.forEach(source => {
+                    const category = source.category_name || 'Unknown';
+                    if (!categories[category]) {
+                        categories[category] = [];
+                    }
+                    categories[category].push(source);
+                });
+
+                Object.keys(categories).forEach(category => {
+                    // Add category header
+                    const categoryRow = document.createElement('tr');
+                    categoryRow.style.backgroundColor = '#f8f9fa';
+                    categoryRow.style.fontWeight = 'bold';
+                    categoryRow.innerHTML = `
+                        <td colspan="6" style="padding: 12px; border-bottom: 2px solid #dee2e6;">
+                            📂 Category: ${category.toUpperCase()}
+                        </td>
+                    `;
+                    tbody.appendChild(categoryRow);
+
+                    // Add sources for this category
+                    categories[category].forEach(source => {
+                        const row = document.createElement('tr');
+                        
+                        const statusClass = source.is_active ? 'status-ok' : 'status-error';
+                        const statusText = source.is_active ? 'Active' : 'Inactive';
+                        const priorityText = source.is_primary ? `Primary (${source.priority})` : `Fallback (${source.priority})`;
+                        
+                        row.innerHTML = `
+                            <td style="padding-left: 20px;">
+                                <strong>${source.source_name}</strong>
+                                <br><small>${source.is_primary ? 'Primary Source' : 'Fallback Source'}</small>
+                            </td>
+                            <td><code>${source.endpoint_path}</code></td>
+                            <td><span style="background: #e3f2fd; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">${category}</span></td>
+                            <td>${priorityText}</td>
+                            <td><span class="status-indicator ${statusClass}"></span>${statusText}</td>
+                            <td><small>${source.base_url}</small></td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                });
+            }
+
+            document.getElementById('sources-table').style.display = 'table';
+        }
+
+        function displayRequestLogs(logsData) {
+            const tbody = document.getElementById('logs-body');
+            tbody.innerHTML = '';
+
+            if (!logsData || logsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666;">No request logs available</td></tr>';
+            } else {
+                logsData.forEach(log => {
+                    const row = document.createElement('tr');
+                    
+                    const statusColor = log.status_code >= 200 && log.status_code < 300 ? '#4CAF50' : '#F44336';
+                    
+                    // Format category filter display
+                    const categoryDisplay = log.category ? 
+                        `<span style="background: #e3f2fd; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">${log.category}</span>` : 
+                        '-';
+                    
+                    // Format fallback chain display
+                    const fallbackDisplay = log.fallback_used ? 
+                        '<span style="color: #FF9800; font-weight: bold;">✓ Fallback Used</span>' : 
+                        '<span style="color: #4CAF50;">✓ Primary Success</span>';
+                    
+                    // Format source used with badge
+                    const sourceDisplay = log.source_used ? 
+                        `<strong>${log.source_used}</strong><br><small style="color: #666;">via ${log.endpoint}</small>` : 
+                        '-';
+                    
+                    // Format timestamp
+                    const timestamp = log.created_at ? new Date(log.created_at).toLocaleString() : '-';
+                    
+                    row.innerHTML = `
+                        <td><small>${timestamp}</small></td>
+                        <td><code>${log.endpoint || '-'}</code></td>
+                        <td>${categoryDisplay}</td>
+                        <td>${sourceDisplay}</td>
+                        <td>${fallbackDisplay}</td>
+                        <td><strong>${log.response_time || 0}ms</strong></td>
+                        <td><span style="color: #666;">${log.total_attempts || 1} attempts</span></td>
+                        <td style="color: ${statusColor}; font-weight: bold;">${log.status_code || 'N/A'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            document.getElementById('logs-table').style.display = 'table';
+        }
+
+        // Manual health check function
+        async function runManualHealthCheck() {
+            const button = document.getElementById('manualHealthCheck');
+            const status = document.getElementById('healthCheckStatus');
+            
+            // Disable button and show loading
+            button.disabled = true;
+            button.innerHTML = '⏳ Checking...';
+            status.textContent = 'Running health check...';
+            status.style.color = '#2196F3';
+            
+            try {
+                const response = await fetch('/dashboard/health/check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    status.textContent = `✅ Checked ${result.data.total_checked} APIs - ${result.data.healthy} healthy, ${result.data.unhealthy} unhealthy`;
+                    status.style.color = '#4CAF50';
+                    
+                    // Reload health status data
+                    setTimeout(() => {
+                        loadDashboardData();
+                    }, 1000);
+                } else {
+                    status.textContent = '❌ Health check failed';
+                    status.style.color = '#F44336';
+                }
+            } catch (error) {
+                console.error('Health check error:', error);
+                status.textContent = '❌ Health check failed';
+                status.style.color = '#F44336';
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.innerHTML = '🔄 Check All APIs Now';
+                
+                // Clear status after 5 seconds
+                setTimeout(() => {
+                    status.textContent = '';
+                }, 5000);
+            }
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', loadDashboardData);
+
+        // Refresh data every 30 seconds
+        setInterval(loadDashboardData, 30000);
+    </script>
+</body>
+</html>

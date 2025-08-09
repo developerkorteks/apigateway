@@ -1,0 +1,43 @@
+{
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "A robust API fallback service for anime content with automatic failover capabilities",
+        "title": "API Fallback Service",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {},
+    "tags": [
+        {
+            "description": "Anime related endpoints",
+            "name": "Anime"
+        },
+        {
+            "description": "Movie related endpoints",
+            "name": "Movie"
+        },
+        {
+            "description": "Search functionality",
+            "name": "Search"
+        },
+        {
+            "description": "Health check endpoints",
+            "name": "Health"
+        }
+    ]
+}

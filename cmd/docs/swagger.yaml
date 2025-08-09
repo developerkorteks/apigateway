@@ -1,0 +1,29 @@
+basePath: /api/v1
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: A robust API fallback service for anime content with automatic failover
+    capabilities
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: API Fallback Service
+  version: "1.0"
+paths: {}
+schemes:
+- http
+- https
+swagger: "2.0"
+tags:
+- description: Anime related endpoints
+  name: Anime
+- description: Movie related endpoints
+  name: Movie
+- description: Search functionality
+  name: Search
+- description: Health check endpoints
+  name: Health
