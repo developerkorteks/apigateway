@@ -1,10 +1,13 @@
+//go:build !cgo
+// +build !cgo
+
 package database
 
 import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 type DB struct {
@@ -12,7 +15,7 @@ type DB struct {
 }
 
 func Init(dbPath string) (*DB, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}

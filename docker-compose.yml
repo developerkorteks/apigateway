@@ -1,0 +1,65 @@
+services:
+  apifallback:
+    image: apifallback:latest
+    container_name: apifallback
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      DATABASE_PATH: /app/data/data.db
+      REDIS_ADDR: redis:6379
+      REDIS_DB: 0
+      API_TIMEOUT: 20s
+      MAX_CONCURRENCY: 10
+      RATE_LIMIT: 100
+      RATE_LIMIT_WINDOW: 1m
+      HEALTH_CHECK_INTERVAL: 10m
+      GIN_MODE: release
+    volumes:
+      - apifallback_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - apifallback_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "casaos.name=API Fallback"
+      - "casaos.description=API Category with Fallback Service"
+      - "casaos.icon=https://cdn-icons-png.flaticon.com/512/2103/2103633.png"
+      - "casaos.port=8080"
+      - "casaos.scheme=http"
+
+  redis:
+    image: valkey/valkey:7-alpine
+    container_name: apifallback_redis
+    restart: unless-stopped
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - apifallback_network
+    command: valkey-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  apifallback_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  apifallback_network:
+    driver: bridge

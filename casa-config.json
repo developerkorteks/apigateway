@@ -1,0 +1,100 @@
+{
+  "name": "API Fallback System",
+  "description": "High-performance API aggregation system with intelligent fallback mechanisms for anime content APIs",
+  "version": "1.0.0",
+  "icon": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/api.png",
+  "tagline": "Reliable API aggregation with smart fallback",
+  "screenshot": "",
+  "category": "Developer Tools",
+  "developer": "API Fallback Team",
+  "website": "",
+  "container": {
+    "image": "apifallback:latest",
+    "shell": "sh",
+    "privileged": false,
+    "network_mode": "bridge",
+    "web_ui": {
+      "http": "8080",
+      "path": "/dashboard/"
+    },
+    "health_check": "curl -f http://localhost:8080/health || exit 1",
+    "environment": [
+      {
+        "name": "PORT",
+        "label": "Application Port",
+        "default": "8080",
+        "description": "Port for the API server"
+      },
+      {
+        "name": "DATABASE_PATH",
+        "label": "Database Path",
+        "default": "/app/data/data.db",
+        "description": "Path to SQLite database file"
+      },
+      {
+        "name": "REDIS_ADDR",
+        "label": "Redis Address",
+        "default": "redis:6379",
+        "description": "Redis server address for caching"
+      },
+      {
+        "name": "API_TIMEOUT",
+        "label": "API Timeout",
+        "default": "20s",
+        "description": "Timeout for external API calls"
+      },
+      {
+        "name": "MAX_CONCURRENCY",
+        "label": "Max Concurrency",
+        "default": "10",
+        "description": "Maximum concurrent API requests"
+      },
+      {
+        "name": "RATE_LIMIT",
+        "label": "Rate Limit",
+        "default": "100",
+        "description": "Requests per minute limit"
+      }
+    ],
+    "volumes": [
+      {
+        "container": "/app/data",
+        "host": "/DATA/AppData/apifallback/data",
+        "mode": "rw",
+        "allocation": "automatic",
+        "created": "automatically"
+      }
+    ],
+    "ports": [
+      {
+        "container": "8080",
+        "host": "8080",
+        "type": "tcp",
+        "allocation": "automatic",
+        "configurable": "advanced"
+      },
+      {
+        "container": "6379",
+        "host": "6379",
+        "type": "tcp",
+        "allocation": "automatic",
+        "configurable": "advanced",
+        "description": "Redis port (optional)"
+      }
+    ],
+    "restart_policy": "unless-stopped",
+    "sysctls": [],
+    "cap_add": [],
+    "cap_drop": [],
+    "devices": []
+  },
+  "supported_architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "compatible": true,
+  "requirements": {
+    "ram": "256MB",
+    "storage": "100MB"
+  }
+}
