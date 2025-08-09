@@ -1,464 +1,209 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.title}} - Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#0a0a0a',
+                        'dark-surface': '#1a1a1a',
+                        'dark-card': '#262626',
+                        'red-primary': '#dc2626',
+                        'red-secondary': '#ef4444',
+                        'red-accent': '#fca5a5',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; box-shadow: 0 0 5px #dc2626; }
+            50% { opacity: 0.7; box-shadow: 0 0 20px #dc2626; }
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
+        .pulse-glow { animation: pulse-glow 2s infinite; }
+        
+        @keyframes slideInUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .slide-in { animation: slideInUp 0.6s ease-out; }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-        }
-
-        .navbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .navbar-brand h1 {
-            margin: 0;
-            font-size: 1.8rem;
-            font-weight: 600;
-        }
-
-        .navbar-brand .status-badge {
-            background: rgba(255,255,255,0.2);
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .navbar-nav {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-        }
-
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-            font-weight: 500;
-        }
-
-        .nav-link:hover {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .nav-link.active {
-            background: rgba(255,255,255,0.2);
-        }
-
-        .system-status {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #4CAF50;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        .nav-tabs {
-            background: white;
-            padding: 0;
-            border-bottom: 1px solid #e0e0e0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .nav-tabs-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-            display: flex;
-        }
-
-        .nav-tabs button {
-            background: none;
-            border: none;
-            padding: 1.2rem 2rem;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            font-size: 1rem;
-            color: #666;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .nav-tabs button:hover {
-            color: #667eea;
-            background: rgba(102, 126, 234, 0.05);
-        }
-
-        .nav-tabs button.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-            background: rgba(102, 126, 234, 0.08);
-        }
-
-        .nav-tabs button::before {
-            font-size: 1.1rem;
-        }
-
-        .nav-tabs button[data-tab="categories"]::before { content: "📂"; }
-        .nav-tabs button[data-tab="api-sources"]::before { content: "🔗"; }
-        .nav-tabs button[data-tab="endpoints"]::before { content: "🎯"; }
-
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            margin-bottom: 2rem;
-            border: 1px solid rgba(0,0,0,0.05);
+        
+        .card-hover {
             transition: all 0.3s ease;
         }
-
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(220, 38, 38, 0.2);
         }
 
-        .card h3 {
-            color: #667eea;
-            margin-bottom: 1.5rem;
-            font-size: 1.3rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
 
-        .card h3::before {
-            content: "📝";
-            font-size: 1.2rem;
-        }
-
-        .card h3[data-icon="categories"]::before { content: "📂"; }
-        .card h3[data-icon="api-sources"]::before { content: "🔗"; }
-        .card h3[data-icon="endpoints"]::before { content: "🎯"; }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
-        }
-
-        .form-group input:focus, .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .checkbox-group input[type="checkbox"] {
-            width: auto;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 0.8rem 1.8rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            margin-right: 0.5rem;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
-            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-        }
-
-        .btn-danger:hover {
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
-            box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
-        }
-
-        .btn-secondary:hover {
-            box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
-        }
-
-        .btn-sm {
-            padding: 0.5rem 1rem;
-            font-size: 0.9rem;
-        }
-
-        .table-container {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-
-        th, td {
-            padding: 1rem 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        th {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            font-weight: 600;
-            color: #495057;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        tbody tr {
-            transition: background-color 0.2s ease;
-        }
-
-        tbody tr:hover {
-            background-color: rgba(102, 126, 234, 0.05);
-        }
-
-        tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
-        }
-
-        .status-active { background-color: #4CAF50; }
-        .status-inactive { background-color: #F44336; }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-
-        .modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 2rem;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 500px;
-        }
-
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .close:hover {
-            color: black;
-        }
-
-        .alert {
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 5px;
-            display: none;
-        }
-
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 0 1rem;
-            }
-            
-            .nav-tabs {
-                padding: 0 1rem;
-            }
-            
-            .nav-tabs button {
-                padding: 0.75rem 1rem;
-                font-size: 0.9rem;
-            }
-        }
     </style>
 </head>
-<body>
-    <div class="header">
-        <nav class="navbar">
-            <div class="navbar-brand">
-                <h1>🚀 API Fallback</h1>
-                <span class="status-badge" id="system-status-badge">Management Panel</span>
+<body class="bg-dark-bg text-white min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-dark-surface to-dark-card border-b border-red-primary/20 shadow-lg">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand -->
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-red-primary to-red-secondary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-rocket text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold gradient-text">API Fallback</h1>
+                            <span class="text-xs text-gray-400">Management Panel</span>
+                        </div>
+                    </div>
+                    <div class="hidden sm:block">
+                        <span class="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm font-medium" id="system-status-badge">
+                            <i class="fas fa-cogs pulse-glow text-blue-400 mr-1"></i>
+                            Management Panel
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="flex items-center space-x-6">
+                    <div class="hidden md:flex items-center space-x-4">
+                        <a href="/dashboard/" class="flex items-center space-x-2 px-4 py-2 text-gray-300 rounded-lg font-medium transition-all hover:bg-dark-card hover:text-white">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/dashboard/management" class="flex items-center space-x-2 px-4 py-2 bg-red-primary/20 text-red-accent rounded-lg font-medium transition-all hover:bg-red-primary/30">
+                            <i class="fas fa-cogs"></i>
+                            <span>Management</span>
+                        </a>
+                        <a href="/swagger/index.html" target="_blank" class="flex items-center space-x-2 px-4 py-2 text-gray-300 rounded-lg font-medium transition-all hover:bg-dark-card hover:text-white">
+                            <i class="fas fa-book"></i>
+                            <span>API Docs</span>
+                        </a>
+                    </div>
+                    
+                    <!-- Status Indicator -->
+                    <div class="flex items-center space-x-2 px-3 py-2 bg-dark-card rounded-lg">
+                        <div class="w-2 h-2 bg-green-400 rounded-full pulse-glow"></div>
+                        <span class="text-sm text-gray-300" id="api-count">Loading...</span>
+                    </div>
+
+                    <!-- Mobile Menu Button -->
+                    <button class="md:hidden p-2 rounded-lg text-gray-300 hover:bg-dark-card" onclick="toggleMobileMenu()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
             </div>
-            <div class="navbar-nav">
-                <a href="/dashboard/" class="nav-link">📊 Dashboard</a>
-                <a href="/dashboard/management" class="nav-link active">⚙️ Management</a>
-                <a href="/swagger/index.html" class="nav-link" target="_blank">📚 API Docs</a>
-                <div class="system-status">
-                    <span class="status-dot" id="status-dot"></span>
-                    <span id="api-count">Loading...</span>
+
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden md:hidden pb-4">
+                <div class="flex flex-col space-y-2">
+                    <a href="/dashboard/" class="flex items-center space-x-2 px-4 py-2 text-gray-300 rounded-lg font-medium hover:bg-dark-card">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/dashboard/management" class="flex items-center space-x-2 px-4 py-2 bg-red-primary/20 text-red-accent rounded-lg font-medium">
+                        <i class="fas fa-cogs"></i>
+                        <span>Management</span>
+                    </a>
+                    <a href="/swagger/index.html" target="_blank" class="flex items-center space-x-2 px-4 py-2 text-gray-300 rounded-lg font-medium hover:bg-dark-card">
+                        <i class="fas fa-book"></i>
+                        <span>API Docs</span>
+                    </a>
                 </div>
             </div>
         </nav>
-    </div>
+    </header>
 
-    <div class="nav-tabs">
-        <div class="nav-tabs-container">
-            <button class="tab-button active" data-tab="categories" onclick="showTab('categories')">Categories</button>
-            <button class="tab-button" data-tab="api-sources" onclick="showTab('api-sources')">API Sources</button>
-            <button class="tab-button" data-tab="endpoints" onclick="showTab('endpoints')">Endpoints</button>
+    <!-- Tab Navigation -->
+    <div class="bg-gradient-to-r from-dark-surface to-dark-card border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8">
+                <button class="tab-button flex items-center space-x-2 px-6 py-4 border-b-2 border-red-primary text-red-accent font-medium transition-all" 
+                        data-tab="categories" onclick="showTab('categories')">
+                    <i class="fas fa-folder"></i>
+                    <span>Categories</span>
+                </button>
+                <button class="tab-button flex items-center space-x-2 px-6 py-4 border-b-2 border-transparent text-gray-400 font-medium transition-all hover:text-white hover:border-gray-600" 
+                        data-tab="api-sources" onclick="showTab('api-sources')">
+                    <i class="fas fa-link"></i>
+                    <span>API Sources</span>
+                </button>
+                <button class="tab-button flex items-center space-x-2 px-6 py-4 border-b-2 border-transparent text-gray-400 font-medium transition-all hover:text-white hover:border-gray-600" 
+                        data-tab="endpoints" onclick="showTab('endpoints')">
+                    <i class="fas fa-bullseye"></i>
+                    <span>Endpoints</span>
+                </button>
+            </div>
         </div>
     </div>
 
-    <div class="container">
-        <div id="alert" class="alert"></div>
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Alert -->
+        <div id="alert" class="hidden mb-6 p-4 rounded-lg border">
+            <div class="flex items-center">
+                <i class="fas fa-info-circle mr-2"></i>
+                <span id="alert-message"></span>
+            </div>
+        </div>
 
         <!-- Categories Tab -->
         <div id="categories" class="tab-content active">
-            <div class="card">
-                <h3 data-icon="categories">Add New Category</h3>
-                <form id="categoryForm">
-                    <div class="form-group">
-                        <label for="categoryName">Category Name</label>
-                        <input type="text" id="categoryName" name="name" required>
+            <!-- Add Category Form -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 mb-8 slide-in">
+                <h3 class="text-xl font-bold gradient-text flex items-center mb-6">
+                    <i class="fas fa-folder-plus mr-3"></i>
+                    Add New Category
+                </h3>
+                <form id="categoryForm" class="space-y-4">
+                    <div>
+                        <label for="categoryName" class="block text-sm font-medium text-gray-300 mb-2">Category Name</label>
+                        <input type="text" id="categoryName" name="name" required
+                               class="w-full px-4 py-2 bg-dark-card border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-red-primary focus:ring-1 focus:ring-red-primary transition-colors">
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="categoryActive" name="is_active" checked>
-                            <label for="categoryActive">Active</label>
-                        </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="categoryActive" name="is_active" checked
+                               class="w-4 h-4 text-red-primary bg-dark-card border-gray-600 rounded focus:ring-red-primary focus:ring-2">
+                        <label for="categoryActive" class="text-sm text-gray-300">Active</label>
                     </div>
-                    <button type="submit" class="btn">Add Category</button>
+                    <button type="submit" class="flex items-center space-x-2 px-6 py-3 bg-red-primary hover:bg-red-secondary text-white rounded-lg font-medium transition-all transform hover:scale-105">
+                        <i class="fas fa-plus"></i>
+                        <span>Add Category</span>
+                    </button>
                 </form>
             </div>
 
-            <div class="card">
-                <h3 data-icon="categories">Categories</h3>
-                <div class="table-container">
-                    <table id="categoriesTable">
+            <!-- Categories List -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 slide-in">
+                <h3 class="text-xl font-bold gradient-text flex items-center mb-6">
+                    <i class="fas fa-folder mr-3"></i>
+                    Categories
+                </h3>
+                <div class="overflow-x-auto">
+                    <table id="categoriesTable" class="w-full">
                         <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">ID</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Name</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Status</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="categoriesBody">
+                        <tbody id="categoriesBody" class="divide-y divide-gray-700">
                         </tbody>
                     </table>
                 </div>
@@ -466,48 +211,146 @@
         </div>
 
         <!-- API Sources Tab -->
-        <div id="api-sources" class="tab-content">
-            <div class="card">
-                <h3 data-icon="api-sources">Add New API Source</h3>
-                <form id="apiSourceForm">
-                    <div class="form-group">
-                        <label for="endpointId">Endpoint</label>
-                        <select id="endpointId" name="endpoint_id" required>
-                            <option value="">Select Endpoint</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="sourceName">Source Name</label>
-                        <input type="text" id="sourceName" name="source_name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="baseUrl">Base URL</label>
-                        <input type="url" id="baseUrl" name="base_url" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="priority">Priority</label>
-                        <input type="number" id="priority" name="priority" min="1" required>
-                    </div>
-                    <div class="form-group">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="isPrimary" name="is_primary">
-                            <label for="isPrimary">Primary API</label>
+        <div id="api-sources" class="tab-content hidden">
+            <!-- Bulk Add API Source -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 mb-8 slide-in">
+                <h3 class="text-xl font-bold gradient-text flex items-center mb-6">
+                    <i class="fas fa-rocket mr-3"></i>
+                    Bulk Add API Source (All Endpoints)
+                </h3>
+                <div class="bg-green-500/20 border border-green-500/50 rounded-lg p-4 mb-6">
+                    <h4 class="text-green-400 font-semibold flex items-center mb-2">
+                        <i class="fas fa-bolt mr-2"></i>
+                        Smart Bulk Add
+                    </h4>
+                    <p class="text-green-300 text-sm">
+                        <strong>Add to ALL endpoints in one click!</strong> Just select category, fill source info, and the API will be automatically added to all endpoints in that category.
+                    </p>
+                </div>
+                <form id="apiSourceForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="categorySelect" class="block text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-tag mr-1"></i>
+                                Category
+                            </label>
+                            <select id="categorySelect" name="category_name" required
+                                    class="w-full px-4 py-2 bg-dark-card border border-gray-600 rounded-lg text-white focus:border-red-primary focus:ring-1 focus:ring-red-primary transition-colors">
+                                <option value="">Select Category</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="sourceName" class="block text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-edit mr-1"></i>
+                                Source Name
+                            </label>
+                            <input type="text" id="sourceName" name="source_name" required placeholder="e.g. animesuge, gogoanime, etc"
+                                   class="w-full px-4 py-2 bg-dark-card border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-red-primary focus:ring-1 focus:ring-red-primary transition-colors">
+                        </div>
+                        <div>
+                            <label for="baseUrl" class="block text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-globe mr-1"></i>
+                                Base URL
+                            </label>
+                            <input type="url" id="baseUrl" name="base_url" required placeholder="http://localhost:8006"
+                                   class="w-full px-4 py-2 bg-dark-card border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-red-primary focus:ring-1 focus:ring-red-primary transition-colors">
+                        </div>
+                        <div>
+                            <label for="priority" class="block text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-sort-numeric-down mr-1"></i>
+                                Priority
+                            </label>
+                            <input type="number" id="priority" name="priority" min="1" required placeholder="1=highest, 5=lowest"
+                                   class="w-full px-4 py-2 bg-dark-card border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-red-primary focus:ring-1 focus:ring-red-primary transition-colors">
                         </div>
                     </div>
-                    <button type="submit" class="btn">Add API Source</button>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="isPrimary" name="is_primary" checked
+                               class="w-4 h-4 text-red-primary bg-dark-card border-gray-600 rounded focus:ring-red-primary focus:ring-2">
+                        <label for="isPrimary" class="text-sm text-gray-300">
+                            <i class="fas fa-check-circle text-green-400 mr-1"></i>
+                            Primary API (recommended)
+                        </label>
+                    </div>
+                    <button type="submit" class="flex items-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all transform hover:scale-105">
+                        <i class="fas fa-rocket"></i>
+                        <span>Add to All Category Endpoints</span>
+                    </button>
                 </form>
             </div>
 
-            <div class="card">
-                <h3 data-icon="api-sources">API Sources & Category Filtering</h3>
-                <div style="background: #e3f2fd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <h4>📍 How Category Filtering Works</h4>
-                    <p style="margin: 0.5rem 0; color: #666;">
-                        When a request comes in with a <strong>category parameter</strong> (e.g., <code>?category=anime</code>), 
+            <!-- Bulk Delete API Source -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 mb-8 slide-in">
+                <h3 class="text-xl font-bold gradient-text flex items-center mb-6">
+                    <i class="fas fa-trash-alt mr-3"></i>
+                    Bulk Delete API Source
+                </h3>
+                <div class="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-6">
+                    <h4 class="text-red-400 font-semibold flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Danger Zone - Bulk Delete
+                    </h4>
+                    <p class="text-red-300 text-sm mb-3">
+                        <strong>Delete ALL endpoints for a specific API source!</strong> This will remove the API source from all endpoints and categories at once. This action cannot be undone.
+                    </p>
+                    <div class="text-red-200 text-xs">
+                        <p><strong>Available API Sources:</strong> multiplescrape, winbutv, samehadaku, animesuge, drakorindo</p>
+                        <p><strong>Tip:</strong> Use the Preview button first to see what will be deleted before confirming.</p>
+                    </div>
+                </div>
+                <form id="bulkDeleteForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="deleteSourceName" class="block text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-server mr-1"></i>
+                                API Source Name
+                            </label>
+                            <input type="text" id="deleteSourceName" name="source_name" required placeholder="e.g., multiplescrape, winbutv, samehadaku"
+                                   class="w-full px-4 py-2 bg-dark-card border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-red-primary focus:ring-1 focus:ring-red-primary transition-colors">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="button" onclick="previewDelete()" class="mr-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition-all">
+                                <i class="fas fa-search mr-2"></i>Preview
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-all">
+                                <i class="fas fa-trash-alt mr-2"></i>Delete All
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                
+                <!-- Preview Results -->
+                <div id="deletePreview" class="hidden mt-6 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+                    <h4 class="text-yellow-400 font-semibold mb-2">Preview: Sources to be deleted</h4>
+                    <div id="previewContent"></div>
+                </div>
+            </div>
+
+            <!-- API Sources List -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 slide-in">
+                <h3 class="text-xl font-bold gradient-text flex items-center mb-6">
+                    <i class="fas fa-link mr-3"></i>
+                    API Sources & Category Filtering
+                </h3>
+                <div class="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4 mb-6">
+                    <h4 class="text-blue-400 font-semibold flex items-center mb-2">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        How Category Filtering Works
+                    </h4>
+                    <p class="text-blue-300 text-sm mb-3">
+                        When a request comes in with a <strong>category parameter</strong> (e.g., <code class="bg-dark-card px-2 py-1 rounded">?category=anime</code>), 
                         the system automatically filters available API sources to only use those configured for that specific category.
                         This ensures that anime requests only go to anime-specific APIs, and movie requests only go to movie-specific APIs.
                     </p>
-                    <ul style="margin-left: 1.5rem; color: #666;">
+                    <div class="flex justify-end space-x-2">
+                        <button onclick="testAPIConnection()" class="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm transition-all">
+                            <i class="fas fa-flask mr-1"></i>Test Connection
+                        </button>
+                        <button onclick="loadAPISources()" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-all">
+                            <i class="fas fa-sync-alt mr-1"></i>Refresh Data
+                        </button>
+                    </div>
+                    <ul class="text-blue-300 text-sm space-y-1 ml-4">
                         <li><strong>Primary sources</strong> are tried first, in order of priority</li>
                         <li><strong>Fallback sources</strong> are used if all primary sources fail</li>
                         <li>Each category can have its own set of configured sources</li>
@@ -515,22 +358,22 @@
                     </ul>
                 </div>
                 
-                <div class="table-container">
-                    <table id="apiSourcesTable">
+                <div class="overflow-x-auto">
+                    <table id="apiSourcesTable" class="w-full">
                         <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Category Filter</th>
-                                <th>Endpoint</th>
-                                <th>Source Name</th>
-                                <th>Base URL</th>
-                                <th>Priority</th>
-                                <th>Source Type</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">ID</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Category Filter</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Endpoint</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Source Name</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Base URL</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Priority</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Source Type</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Status</th>
+                                <th class="text-left py-3 px-4 text-gray-300 font-medium">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="apiSourcesBody">
+                        <tbody id="apiSourcesBody" class="divide-y divide-gray-700">
                         </tbody>
                     </table>
                 </div>
@@ -538,89 +381,144 @@
         </div>
 
         <!-- Endpoints Tab -->
-        <div id="endpoints" class="tab-content">
-            <div class="card">
-                <h3 data-icon="endpoints">Available Endpoints</h3>
-                <p>These are the predefined endpoints based on the API specification:</p>
-                <ul>
-                    <li>/api/v1/home</li>
-                    <li>/api/v1/jadwal-rilis</li>
-                    <li>/api/v1/jadwal-rilis/{day}</li>
-                    <li>/api/v1/anime-terbaru</li>
-                    <li>/api/v1/movie</li>
-                    <li>/api/v1/anime-detail</li>
-                    <li>/api/v1/episode-detail</li>
-                    <li>/api/v1/search</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Category Modal -->
-    <div id="editCategoryModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('editCategoryModal')">&times;</span>
-            <h3 data-icon="categories">Edit Category</h3>
-            <form id="editCategoryForm">
-                <input type="hidden" id="editCategoryId">
-                <div class="form-group">
-                    <label for="editCategoryName">Category Name</label>
-                    <input type="text" id="editCategoryName" name="name" required>
-                </div>
-                <div class="form-group">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="editCategoryActive" name="is_active">
-                        <label for="editCategoryActive">Active</label>
+        <div id="endpoints" class="tab-content hidden">
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 slide-in">
+                <h3 class="text-xl font-bold gradient-text flex items-center mb-6">
+                    <i class="fas fa-bullseye mr-3"></i>
+                    Available Endpoints
+                </h3>
+                <p class="text-gray-400 mb-6">These are the predefined endpoints based on the API specification:</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-dark-card p-4 rounded-lg border border-gray-700">
+                        <code class="text-green-400">/api/v1/home</code>
+                    </div>
+                    <div class="bg-dark-card p-4 rounded-lg border border-gray-700">
+                        <code class="text-green-400">/api/v1/jadwal-rilis</code>
+                    </div>
+                    <div class="bg-dark-card p-4 rounded-lg border border-gray-700">
+                        <code class="text-green-400">/api/v1/jadwal-rilis/{day}</code>
+                    </div>
+                    <div class="bg-dark-card p-4 rounded-lg border border-gray-700">
+                        <code class="text-green-400">/api/v1/anime-terbaru</code>
+                    </div>
+                    <div class="bg-dark-card p-4 rounded-lg border border-gray-700">
+                        <code class="text-green-400">/api/v1/movie</code>
+                    </div>
+                    <div class="bg-dark-card p-4 rounded-lg border border-gray-700">
+                        <code class="text-green-400">/api/v1/anime-detail</code>
+                    </div>
+                    <div class="bg-dark-card p-4 rounded-lg border border-gray-700">
+                        <code class="text-green-400">/api/v1/episode-detail</code>
+                    </div>
+                    <div class="bg-dark-card p-4 rounded-lg border border-gray-700">
+                        <code class="text-green-400">/api/v1/search</code>
                     </div>
                 </div>
-                <button type="submit" class="btn">Update Category</button>
-                <button type="button" class="btn btn-secondary" onclick="closeModal('editCategoryModal')">Cancel</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Edit Category Modal -->
+    <div id="editCategoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold gradient-text flex items-center">
+                    <i class="fas fa-edit mr-3"></i>
+                    Edit Category
+                </h3>
+                <button onclick="closeModal('editCategoryModal')" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="editCategoryForm" class="space-y-4">
+                <input type="hidden" id="editCategoryId">
+                <div>
+                    <label for="editCategoryName" class="block text-sm font-medium text-gray-300 mb-2">Category Name</label>
+                    <input type="text" id="editCategoryName" name="name" required
+                           class="w-full px-4 py-2 bg-dark-card border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-red-primary focus:ring-1 focus:ring-red-primary transition-colors">
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="editCategoryActive" name="is_active"
+                           class="w-4 h-4 text-red-primary bg-dark-card border-gray-600 rounded focus:ring-red-primary focus:ring-2">
+                    <label for="editCategoryActive" class="text-sm text-gray-300">Active</label>
+                </div>
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-red-primary hover:bg-red-secondary text-white rounded-lg font-medium transition-all">
+                        Update Category
+                    </button>
+                    <button type="button" onclick="closeModal('editCategoryModal')" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all">
+                        Cancel
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 
     <!-- Edit API Source Modal -->
-    <div id="editApiSourceModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('editApiSourceModal')">&times;</span>
-            <h3 data-icon="api-sources">Edit API Source</h3>
-            <form id="editApiSourceForm">
+    <div id="editApiSourceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold gradient-text flex items-center">
+                    <i class="fas fa-edit mr-3"></i>
+                    Edit API Source
+                </h3>
+                <button onclick="closeModal('editApiSourceModal')" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="editApiSourceForm" class="space-y-4">
                 <input type="hidden" id="editApiSourceId">
-                <div class="form-group">
-                    <label for="editSourceName">Source Name</label>
-                    <input type="text" id="editSourceName" name="source_name" required>
+                <div>
+                    <label for="editSourceName" class="block text-sm font-medium text-gray-300 mb-2">Source Name</label>
+                    <input type="text" id="editSourceName" name="source_name" required
+                           class="w-full px-4 py-2 bg-dark-card border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-red-primary focus:ring-1 focus:ring-red-primary transition-colors">
                 </div>
-                <div class="form-group">
-                    <label for="editBaseUrl">Base URL</label>
-                    <input type="url" id="editBaseUrl" name="base_url" required>
+                <div>
+                    <label for="editBaseUrl" class="block text-sm font-medium text-gray-300 mb-2">Base URL</label>
+                    <input type="url" id="editBaseUrl" name="base_url" required
+                           class="w-full px-4 py-2 bg-dark-card border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-red-primary focus:ring-1 focus:ring-red-primary transition-colors">
                 </div>
-                <div class="form-group">
-                    <label for="editPriority">Priority</label>
-                    <input type="number" id="editPriority" name="priority" min="1" required>
+                <div>
+                    <label for="editPriority" class="block text-sm font-medium text-gray-300 mb-2">Priority</label>
+                    <input type="number" id="editPriority" name="priority" min="1" required
+                           class="w-full px-4 py-2 bg-dark-card border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-red-primary focus:ring-1 focus:ring-red-primary transition-colors">
                 </div>
-                <div class="form-group">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="editIsPrimary" name="is_primary">
-                        <label for="editIsPrimary">Primary API</label>
+                <div class="space-y-2">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="editIsPrimary" name="is_primary"
+                               class="w-4 h-4 text-red-primary bg-dark-card border-gray-600 rounded focus:ring-red-primary focus:ring-2">
+                        <label for="editIsPrimary" class="text-sm text-gray-300">Primary API</label>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="editIsActive" name="is_active"
+                               class="w-4 h-4 text-red-primary bg-dark-card border-gray-600 rounded focus:ring-red-primary focus:ring-2">
+                        <label for="editIsActive" class="text-sm text-gray-300">Active</label>
                     </div>
                 </div>
-                <div class="form-group">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="editIsActive" name="is_active">
-                        <label for="editIsActive">Active</label>
-                    </div>
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-red-primary hover:bg-red-secondary text-white rounded-lg font-medium transition-all">
+                        Update API Source
+                    </button>
+                    <button type="button" onclick="closeModal('editApiSourceModal')" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all">
+                        Cancel
+                    </button>
                 </div>
-                <button type="submit" class="btn">Update API Source</button>
-                <button type="button" class="btn btn-secondary" onclick="closeModal('editApiSourceModal')">Cancel</button>
             </form>
         </div>
     </div>
 
     <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
         // Load API status for navbar
         async function loadAPIStatus() {
             try {
-                const healthResponse = await fetch('/dashboard/health');
+                const baseUrl = window.location.origin;
+                const healthResponse = await fetch(`${baseUrl}/dashboard/health`);
                 const healthData = await healthResponse.json();
                 
                 if (healthData.status === 'success' && healthData.data) {
@@ -628,15 +526,7 @@
                     const totalCount = healthData.data.length;
                     const healthPercentage = totalCount > 0 ? Math.round((healthyCount / totalCount) * 100) : 100;
                     
-                    document.getElementById('api-count').textContent = `${healthyCount}/${totalCount} APIs Online`;
-                    
-                    // Update status dot color
-                    const statusDot = document.getElementById('status-dot');
-                    statusDot.style.background = healthPercentage >= 80 ? '#4CAF50' : healthPercentage >= 50 ? '#FF9800' : '#F44336';
-                    
-                    // Update system status badge
-                    const statusBadge = document.getElementById('system-status-badge');
-                    statusBadge.textContent = healthPercentage >= 80 ? 'Management Panel' : healthPercentage >= 50 ? 'Partial Issues' : 'System Issues';
+                    document.getElementById('api-count').textContent = `${healthyCount}/${totalCount} APIs Active`;
                 }
             } catch (error) {
                 console.error('Failed to load API status:', error);
@@ -648,49 +538,78 @@
         function showTab(tabName) {
             // Hide all tab contents
             const tabContents = document.querySelectorAll('.tab-content');
-            tabContents.forEach(tab => tab.classList.remove('active'));
+            tabContents.forEach(content => {
+                content.classList.add('hidden');
+                content.classList.remove('active');
+            });
             
-            // Remove active class from all buttons
+            // Remove active class from all tab buttons
             const tabButtons = document.querySelectorAll('.tab-button');
-            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabButtons.forEach(button => {
+                button.classList.remove('border-red-primary', 'text-red-accent');
+                button.classList.add('border-transparent', 'text-gray-400');
+            });
             
-            // Show selected tab and mark button as active
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
+            // Show selected tab content
+            const selectedTab = document.getElementById(tabName);
+            selectedTab.classList.remove('hidden');
+            selectedTab.classList.add('active');
+            
+            // Add active class to clicked tab button
+            const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+            activeButton.classList.remove('border-transparent', 'text-gray-400');
+            activeButton.classList.add('border-red-primary', 'text-red-accent');
             
             // Load data for the selected tab
             if (tabName === 'categories') {
                 loadCategories();
             } else if (tabName === 'api-sources') {
+                console.log('🔄 Switching to API Sources tab');
                 loadAPISources();
-                loadEndpointsForSelect();
+                // Add small delay to ensure DOM is ready
+                setTimeout(() => {
+                    loadCategoriesForSelect();
+                }, 100);
+            } else if (tabName === 'endpoints') {
+                console.log('🔄 Switching to Endpoints tab');
             }
         }
 
         // Alert functions
         function showAlert(message, type) {
             const alert = document.getElementById('alert');
-            alert.className = `alert alert-${type}`;
-            alert.textContent = message;
-            alert.style.display = 'block';
+            const alertMessage = document.getElementById('alert-message');
+            
+            alert.classList.remove('hidden', 'border-green-500/50', 'bg-green-500/20', 'text-green-300', 'border-red-500/50', 'bg-red-500/20', 'text-red-300');
+            
+            if (type === 'success') {
+                alert.classList.add('border-green-500/50', 'bg-green-500/20', 'text-green-300');
+            } else {
+                alert.classList.add('border-red-500/50', 'bg-red-500/20', 'text-red-300');
+            }
+            
+            alertMessage.textContent = message;
+            
             setTimeout(() => {
-                alert.style.display = 'none';
+                alert.classList.add('hidden');
             }, 5000);
         }
 
         // Modal functions
         function openModal(modalId) {
-            document.getElementById(modalId).style.display = 'block';
+            document.getElementById(modalId).classList.remove('hidden');
         }
 
         function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
+            document.getElementById(modalId).classList.add('hidden');
         }
 
         // Categories functionality
         async function loadCategories() {
             try {
-                const response = await fetch('/dashboard/categories');
+                const baseUrl = window.location.origin;
+                const apiUrl = `${baseUrl}/dashboard/categories`;
+                const response = await fetch(apiUrl);
                 const data = await response.json();
                 
                 if (data.status === 'success') {
@@ -709,16 +628,31 @@
 
             categories.forEach(category => {
                 const row = document.createElement('tr');
+                row.className = 'hover:bg-dark-card/50 transition-colors';
+                
+                const statusClass = category.is_active ? 'text-green-400' : 'text-red-400';
+                const statusIcon = category.is_active ? 'fa-check-circle' : 'fa-times-circle';
+                
                 row.innerHTML = `
-                    <td>${category.id}</td>
-                    <td>${category.name}</td>
-                    <td>
-                        <span class="status-indicator ${category.is_active ? 'status-active' : 'status-inactive'}"></span>
-                        ${category.is_active ? 'Active' : 'Inactive'}
+                    <td class="py-3 px-4 text-gray-300">${category.id}</td>
+                    <td class="py-3 px-4 text-white font-medium">${category.name}</td>
+                    <td class="py-3 px-4">
+                        <span class="flex items-center">
+                            <i class="fas ${statusIcon} ${statusClass} mr-2"></i>
+                            <span class="${statusClass}">${category.is_active ? 'Active' : 'Inactive'}</span>
+                        </span>
                     </td>
-                    <td>
-                        <button class="btn btn-secondary" onclick="editCategory(${category.id}, '${category.name}', ${category.is_active})">Edit</button>
-                        <button class="btn btn-danger" onclick="deleteCategory(${category.id})">Delete</button>
+                    <td class="py-3 px-4">
+                        <div class="flex space-x-2">
+                            <button onclick="editCategory(${category.id}, '${category.name}', ${category.is_active})" 
+                                    class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-all">
+                                <i class="fas fa-edit mr-1"></i>Edit
+                            </button>
+                            <button onclick="deleteCategory(${category.id})" 
+                                    class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-all">
+                                <i class="fas fa-trash mr-1"></i>Delete
+                            </button>
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -736,7 +670,8 @@
             };
 
             try {
-                const response = await fetch('/dashboard/categories', {
+                const baseUrl = window.location.origin;
+                const response = await fetch(`${baseUrl}/dashboard/categories`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -777,7 +712,8 @@
             };
 
             try {
-                const response = await fetch(`/dashboard/categories/${id}`, {
+                const baseUrl = window.location.origin;
+                const response = await fetch(`${baseUrl}/dashboard/categories/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -805,7 +741,8 @@
             }
 
             try {
-                const response = await fetch(`/dashboard/categories/${id}`, {
+                const baseUrl = window.location.origin;
+                const response = await fetch(`${baseUrl}/dashboard/categories/${id}`, {
                     method: 'DELETE'
                 });
 
@@ -822,19 +759,106 @@
             }
         }
 
-        // API Sources functionality
-        async function loadAPISources() {
+        // Load categories for select dropdown
+        async function loadCategoriesForSelect() {
             try {
-                const response = await fetch('/dashboard/api-sources');
+                const baseUrl = window.location.origin;
+                const apiUrl = `${baseUrl}/dashboard/categories`;
+                const response = await fetch(apiUrl);
                 const data = await response.json();
                 
                 if (data.status === 'success') {
-                    displayAPISources(data.data);
+                    const select = document.getElementById('categorySelect');
+                    if (!select) {
+                        // Element not available yet, skip for now
+                        console.log('categorySelect select not found, skipping...');
+                        return;
+                    }
+                    
+                    select.innerHTML = '<option value="">Select Category</option>';
+                    
+                    data.data.forEach(category => {
+                        if (category.is_active) {  // Only show active categories
+                            const option = document.createElement('option');
+                            option.value = category.name;
+                            option.textContent = `${category.name} (Active)`;
+                            select.appendChild(option);
+                        }
+                    });
+                    
+                    console.log('✅ Categories loaded for select dropdown:', data.data.length);
                 } else {
-                    showAlert('Failed to load API sources', 'error');
+                    console.error('Failed to load categories:', data.error);
+                    showAlert('Failed to load categories', 'error');
                 }
             } catch (error) {
-                showAlert('Error loading API sources: ' + error.message, 'error');
+                console.error('Error loading categories:', error);
+                showAlert('Error loading categories: ' + error.message, 'error');
+            }
+        }
+
+        // API Sources functionality
+        async function loadAPISources() {
+            console.log('🔄 Loading API sources...');
+            
+            // Show loading state
+            const tbody = document.getElementById('apiSourcesBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="py-8 text-center text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>
+                        <p>Loading API sources...</p>
+                    </td>
+                </tr>
+            `;
+            
+            try {
+                // Get current URL to determine the correct base URL
+                const baseUrl = window.location.origin;
+                const apiUrl = `${baseUrl}/dashboard/api-sources`;
+                console.log('🌐 Fetching from:', apiUrl);
+                
+                const response = await fetch(apiUrl);
+                console.log('📡 API Sources response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('📊 API Sources data:', data);
+                
+                if (data.status === 'success') {
+                    displayAPISources(data.data);
+                    console.log('✅ API sources loaded successfully');
+                } else {
+                    console.error('❌ API sources load failed:', data.error);
+                    showAlert('Failed to load API sources: ' + (data.error || 'Unknown error'), 'error');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="9" class="py-8 text-center text-red-400">
+                                <i class="fas fa-exclamation-triangle text-2xl mb-2 block"></i>
+                                <p>Failed to load API sources</p>
+                                <p class="text-sm">${data.error || 'Unknown error'}</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('💥 Network error loading API sources:', error);
+                showAlert('Network error loading API sources: ' + error.message, 'error');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="py-8 text-center text-red-400">
+                            <i class="fas fa-wifi text-2xl mb-2 block"></i>
+                            <p>Network error loading API sources</p>
+                            <p class="text-sm">${error.message}</p>
+                            <button onclick="loadAPISources()" class="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm">
+                                <i class="fas fa-redo mr-1"></i>Retry
+                            </button>
+                        </td>
+                    </tr>
+                `;
             }
         }
 
@@ -843,7 +867,15 @@
             tbody.innerHTML = '';
 
             if (!sources || sources.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #666;">No API sources found</td></tr>';
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="py-8 text-center text-gray-400">
+                            <i class="fas fa-database text-2xl mb-2 block"></i>
+                            <p>No API sources found</p>
+                            <p class="text-sm">Add some API sources to get started</p>
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
@@ -861,12 +893,12 @@
             Object.keys(groupedSources).forEach(categoryName => {
                 // Add category header
                 const categoryRow = document.createElement('tr');
-                categoryRow.style.backgroundColor = '#f8f9fa';
-                categoryRow.style.fontWeight = 'bold';
+                categoryRow.className = 'bg-dark-card border-b border-red-primary/30';
                 categoryRow.innerHTML = `
-                    <td colspan="9" style="padding: 12px; border-bottom: 2px solid #dee2e6;">
-                        📂 Category: ${categoryName.toUpperCase()} 
-                        <small style="color: #666; font-weight: normal;">(${groupedSources[categoryName].length} sources configured)</small>
+                    <td colspan="9" class="py-3 px-4 font-bold text-red-accent">
+                        <i class="fas fa-folder mr-2"></i>
+                        Category: ${categoryName.toUpperCase()} 
+                        <span class="text-gray-400 font-normal text-sm ml-2">(${groupedSources[categoryName].length} sources configured)</span>
                     </td>
                 `;
                 tbody.appendChild(categoryRow);
@@ -881,33 +913,47 @@
                 // Add sources for this category
                 groupedSources[categoryName].forEach(source => {
                     const row = document.createElement('tr');
+                    row.className = 'hover:bg-dark-card/50 transition-colors';
                     
                     // Enhanced type display
                     const typeDisplay = source.is_primary ? 
-                        `<span style="background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">PRIMARY</span>` :
-                        `<span style="background: #FF9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">FALLBACK</span>`;
+                        `<span class="bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">PRIMARY</span>` :
+                        `<span class="bg-orange-600 text-white px-2 py-1 rounded text-xs font-medium">FALLBACK</span>`;
                     
                     // Category filter badge
-                    const categoryBadge = `<span style="background: #e3f2fd; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">${source.category_name}</span>`;
+                    const categoryBadge = `<span class="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs">${source.category_name}</span>`;
+                    
+                    const statusClass = source.is_active ? 'text-green-400' : 'text-red-400';
+                    const statusIcon = source.is_active ? 'fa-check-circle' : 'fa-times-circle';
                     
                     row.innerHTML = `
-                        <td>${source.id}</td>
-                        <td>${categoryBadge}</td>
-                        <td><code>${source.endpoint_path}</code></td>
-                        <td style="padding-left: 15px;">
-                            <strong>${source.source_name}</strong>
-                            <br><small style="color: #666;">${source.is_primary ? 'Primary API Source' : 'Fallback API Source'}</small>
+                        <td class="py-3 px-4 text-gray-300">${source.id}</td>
+                        <td class="py-3 px-4">${categoryBadge}</td>
+                        <td class="py-3 px-4"><code class="bg-dark-card px-2 py-1 rounded text-green-400">${source.endpoint_path}</code></td>
+                        <td class="py-3 px-4">
+                            <div class="font-medium text-white">${source.source_name}</div>
+                            <div class="text-xs text-gray-400">${source.is_primary ? 'Primary API Source' : 'Fallback API Source'}</div>
                         </td>
-                        <td><small>${source.base_url}</small></td>
-                        <td><strong>${source.priority}</strong></td>
-                        <td>${typeDisplay}</td>
-                        <td>
-                            <span class="status-indicator ${source.is_active ? 'status-active' : 'status-inactive'}"></span>
-                            ${source.is_active ? 'Active' : 'Inactive'}
+                        <td class="py-3 px-4 text-sm text-gray-400">${source.base_url}</td>
+                        <td class="py-3 px-4 font-bold text-white">${source.priority}</td>
+                        <td class="py-3 px-4">${typeDisplay}</td>
+                        <td class="py-3 px-4">
+                            <span class="flex items-center">
+                                <i class="fas ${statusIcon} ${statusClass} mr-2"></i>
+                                <span class="${statusClass}">${source.is_active ? 'Active' : 'Inactive'}</span>
+                            </span>
                         </td>
-                        <td>
-                            <button class="btn btn-secondary" onclick="editAPISource(${source.id}, '${source.source_name}', '${source.base_url}', ${source.priority}, ${source.is_primary}, ${source.is_active})">Edit</button>
-                            <button class="btn btn-danger" onclick="deleteAPISource(${source.id})">Delete</button>
+                        <td class="py-3 px-4">
+                            <div class="flex space-x-2">
+                                <button onclick="editAPISource(${source.id}, '${source.source_name}', '${source.base_url}', ${source.priority}, ${source.is_primary}, ${source.is_active})" 
+                                        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-all">
+                                    <i class="fas fa-edit mr-1"></i>Edit
+                                </button>
+                                <button onclick="deleteAPISource(${source.id})" 
+                                        class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-all">
+                                    <i class="fas fa-trash mr-1"></i>Delete
+                                </button>
+                            </div>
                         </td>
                     `;
                     tbody.appendChild(row);
@@ -915,44 +961,30 @@
             });
         }
 
-        async function loadEndpointsForSelect() {
-            // For now, we'll use hardcoded endpoints since they're predefined
-            const endpoints = [
-                { id: 1, path: '/api/v1/home' },
-                { id: 2, path: '/api/v1/jadwal-rilis' },
-                { id: 3, path: '/api/v1/anime-terbaru' },
-                { id: 4, path: '/api/v1/movie' },
-                { id: 5, path: '/api/v1/anime-detail' },
-                { id: 6, path: '/api/v1/episode-detail' },
-                { id: 7, path: '/api/v1/search' }
-            ];
 
-            const select = document.getElementById('endpointId');
-            select.innerHTML = '<option value="">Select Endpoint</option>';
-            
-            endpoints.forEach(endpoint => {
-                const option = document.createElement('option');
-                option.value = endpoint.id;
-                option.textContent = endpoint.path;
-                select.appendChild(option);
-            });
-        }
 
-        // API Source form submission
+        // API Source bulk form submission
         document.getElementById('apiSourceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const formData = new FormData(e.target);
             const data = {
-                endpoint_id: parseInt(formData.get('endpoint_id')),
+                category_name: formData.get('category_name'),
                 source_name: formData.get('source_name'),
                 base_url: formData.get('base_url'),
                 priority: parseInt(formData.get('priority')),
                 is_primary: formData.get('is_primary') === 'on'
             };
 
+            // Show loading state
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '⏳ Adding to All Endpoints...';
+            submitBtn.disabled = true;
+
             try {
-                const response = await fetch('/dashboard/api-sources', {
+                const baseUrl = window.location.origin;
+                const response = await fetch(`${baseUrl}/dashboard/api-sources/bulk`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -963,14 +995,18 @@
                 const result = await response.json();
                 
                 if (result.status === 'success') {
-                    showAlert('API source created successfully', 'success');
+                    showAlert(`🎉 Success! API source '${data.source_name}' added to all endpoints in '${data.category_name}' category`, 'success');
                     e.target.reset();
                     loadAPISources();
                 } else {
-                    showAlert('Failed to create API source: ' + (result.error || 'Unknown error'), 'error');
+                    showAlert('❌ Failed to create bulk API source: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (error) {
-                showAlert('Error creating API source: ' + error.message, 'error');
+                showAlert('⚠️ Error creating bulk API source: ' + error.message, 'error');
+            } finally {
+                // Restore button state
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             }
         });
 
@@ -999,7 +1035,8 @@
             };
 
             try {
-                const response = await fetch(`/dashboard/api-sources/${id}`, {
+                const baseUrl = window.location.origin;
+                const response = await fetch(`${baseUrl}/dashboard/api-sources/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1027,7 +1064,8 @@
             }
 
             try {
-                const response = await fetch(`/dashboard/api-sources/${id}`, {
+                const baseUrl = window.location.origin;
+                const response = await fetch(`${baseUrl}/dashboard/api-sources/${id}`, {
                     method: 'DELETE'
                 });
 
@@ -1044,10 +1082,159 @@
             }
         }
 
+        // Test function for debugging
+        function testCategoriesLoad() {
+            console.log('🔍 Testing categories load...');
+            console.log('categorySelect element exists:', !!document.getElementById('categorySelect'));
+            loadCategoriesForSelect();
+        }
+
+        // Test API connection
+        async function testAPIConnection() {
+            console.log('🧪 Testing API connection...');
+            const baseUrl = window.location.origin;
+            
+            try {
+                // Test health endpoint
+                console.log('Testing health endpoint...');
+                const healthResponse = await fetch(`${baseUrl}/dashboard/health`);
+                console.log('Health status:', healthResponse.status);
+                
+                // Test categories endpoint
+                console.log('Testing categories endpoint...');
+                const categoriesResponse = await fetch(`${baseUrl}/dashboard/categories`);
+                console.log('Categories status:', categoriesResponse.status);
+                
+                // Test API sources endpoint
+                console.log('Testing API sources endpoint...');
+                const apiSourcesResponse = await fetch(`${baseUrl}/dashboard/api-sources`);
+                console.log('API Sources status:', apiSourcesResponse.status);
+                
+                if (apiSourcesResponse.ok) {
+                    const data = await apiSourcesResponse.json();
+                    console.log('API Sources data sample:', data.data?.slice(0, 2));
+                }
+                
+                showAlert('API connection test completed. Check console for details.', 'success');
+            } catch (error) {
+                console.error('API connection test failed:', error);
+                showAlert('API connection test failed: ' + error.message, 'error');
+            }
+        }
+
+        // Add test button to window for debugging
+        window.testAPIConnection = testAPIConnection;
+
+        // Bulk delete functions
+        async function previewDelete() {
+            const sourceName = document.getElementById('deleteSourceName').value.trim();
+            if (!sourceName) {
+                showAlert('Please enter a source name', 'error');
+                return;
+            }
+
+            try {
+                const baseUrl = window.location.origin;
+                const response = await fetch(`${baseUrl}/dashboard/api-sources/by-name?source_name=${encodeURIComponent(sourceName)}`);
+                const data = await response.json();
+
+                const previewDiv = document.getElementById('deletePreview');
+                const previewContent = document.getElementById('previewContent');
+
+                if (data.status === 'success' && data.data.length > 0) {
+                    previewDiv.classList.remove('hidden');
+                    
+                    let html = `<p class="text-yellow-300 mb-3">Found <strong>${data.count}</strong> API sources with name "<strong>${sourceName}</strong>":</p>`;
+                    html += '<div class="space-y-2">';
+                    
+                    data.data.forEach(source => {
+                        html += `
+                            <div class="bg-dark-card p-3 rounded border-l-4 border-yellow-400">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <span class="text-white font-medium">${source.source_name}</span>
+                                        <span class="text-gray-400 ml-2">${source.endpoint_path}</span>
+                                    </div>
+                                    <div class="text-sm text-gray-400">
+                                        Category: ${source.category_name} | Priority: ${source.priority}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    previewContent.innerHTML = html;
+                } else {
+                    previewDiv.classList.remove('hidden');
+                    previewContent.innerHTML = `<p class="text-gray-400">No API sources found with name "<strong>${sourceName}</strong>"</p>`;
+                }
+            } catch (error) {
+                console.error('Error previewing delete:', error);
+                showAlert('Error previewing delete: ' + error.message, 'error');
+            }
+        }
+
+        // Bulk delete form submission
+        document.getElementById('bulkDeleteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const sourceName = document.getElementById('deleteSourceName').value.trim();
+            if (!sourceName) {
+                showAlert('Please enter a source name', 'error');
+                return;
+            }
+
+            // Confirm deletion
+            if (!confirm(`Are you sure you want to delete ALL API sources with name "${sourceName}"? This action cannot be undone and will remove the API from all endpoints.`)) {
+                return;
+            }
+
+            try {
+                const baseUrl = window.location.origin;
+                const response = await fetch(`${baseUrl}/dashboard/api-sources/by-name`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        source_name: sourceName
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showAlert(result.message, 'success');
+                    document.getElementById('deleteSourceName').value = '';
+                    document.getElementById('deletePreview').classList.add('hidden');
+                    loadAPISources(); // Refresh the API sources list
+                } else {
+                    showAlert('Failed to delete API sources: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting API sources:', error);
+                showAlert('Error deleting API sources: ' + error.message, 'error');
+            }
+        });
+
         // Load initial data
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Dashboard loading...');
             loadCategories();
             loadAPIStatus();
+            
+            // Check if we're on API sources tab and load data
+            const apiSourcesTab = document.getElementById('api-sources');
+            if (apiSourcesTab && !apiSourcesTab.classList.contains('hidden')) {
+                console.log('🔄 API Sources tab is active, loading data...');
+                loadAPISources();
+                setTimeout(() => {
+                    loadCategoriesForSelect();
+                }, 200);
+            }
+            
+            console.log('✅ Dashboard loaded - use testAPIConnection() to debug');
         });
 
         // Refresh API status every 30 seconds

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -85,6 +86,13 @@ func (s *APIService) ProcessRequest(ctx *domain.RequestContext) (*domain.APIResp
 
 	if len(apiSources) == 0 {
 		return nil, fmt.Errorf("no API sources configured for endpoint %s in category %s", ctx.Endpoint, ctx.Category)
+	}
+
+	// Log all sources retrieved from database
+	logger.Infof("Retrieved %d sources from database for %s in category %s:", len(apiSources), ctx.Endpoint, ctx.Category)
+	for _, source := range apiSources {
+		logger.Infof("  - %s (ID: %d, BaseURL: %s, IsPrimary: %t, IsActive: %t)",
+			source.SourceName, source.ID, source.BaseURL, source.IsPrimary, source.IsActive)
 	}
 
 	// Collect all source names for metadata
@@ -337,9 +345,17 @@ func (s *APIService) aggregateResponses(responses []*domain.APIResponse, endpoin
 		s.aggregateListData(aggregatedData, responses, "data")
 	case "/api/v1/jadwal-rilis":
 		s.aggregateScheduleData(aggregatedData, responses)
-	default:
-		// For other endpoints, just return the first successful response
+	case "/api/v1/search":
+		s.aggregateListData(aggregatedData, responses, "data")
+	case "/api/v1/anime-detail", "/api/v1/anime-detail/":
+		// For detail endpoints, return the first successful response (no aggregation needed)
 		return baseResponse
+	case "/api/v1/episode-detail", "/api/v1/episode-detail/":
+		// For detail endpoints, return the first successful response (no aggregation needed)
+		return baseResponse
+	default:
+		// For unknown endpoints, try to aggregate as list data
+		s.aggregateListData(aggregatedData, responses, "data")
 	}
 
 	// Convert aggregated data back to JSON bytes
@@ -518,6 +534,18 @@ func (s *APIService) buildURL(baseURL, endpoint string, params map[string]string
 		}
 	}
 
+	// Special handling for samehadaku API - add required parameters
+	if strings.Contains(baseURL, "localhost:8000") && endpoint == "/api/v1/search" {
+		// Ensure trailing slash for samehadaku search endpoint
+		if !strings.HasSuffix(url, "/") {
+			url += "/"
+		}
+		// Add force_refresh parameter if not present
+		if _, exists := queryParams["force_refresh"]; !exists {
+			queryParams["force_refresh"] = "false"
+		}
+	}
+
 	if len(queryParams) > 0 {
 		url += "?"
 		first := true
@@ -613,20 +641,32 @@ func (s *APIService) performHealthChecks() {
 
 // checkAPIHealth checks the health of a single API source
 func (s *APIService) checkAPIHealth(source database.APISource, endpoint string) {
-	// Skip health check for endpoints that require mandatory parameters
-	// These endpoints will return 400/422 without proper parameters
-	skipEndpoints := map[string]bool{
-		"/api/v1/search":          true, // requires 'q' parameter
-		"/api/v1/anime-detail/":   true, // requires 'id' or 'slug' parameter
-		"/api/v1/episode-detail/": true, // requires episode parameters
-	}
-
-	if skipEndpoints[endpoint] {
-		logger.Debugf("Skipping health check for %s %s (requires mandatory parameters)", source.SourceName, endpoint)
-		return
+	// Add test parameters for endpoints that require them
+	testParams := map[string]string{
+		"/api/v1/search":          "?query=a", // Use 'a' for better test results
+		"/api/v1/anime-detail/":   "?id=1",
+		"/api/v1/episode-detail/": "?id=1",
+		"/api/v1/anime-detail":    "?id=1",
+		"/api/v1/episode-detail":  "?id=1",
 	}
 
 	url := source.BaseURL + endpoint
+	if params, exists := testParams[endpoint]; exists {
+		url += params
+	}
+
+	// Special handling for samehadaku search endpoint
+	if strings.Contains(source.BaseURL, "localhost:8000") && endpoint == "/api/v1/search" {
+		if !strings.HasSuffix(url, "/") {
+			url += "/"
+		}
+		// Add force_refresh parameter for samehadaku
+		if strings.Contains(url, "?") {
+			url += "&force_refresh=false"
+		} else {
+			url += "?force_refresh=false"
+		}
+	}
 	startTime := time.Now()
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -698,6 +738,39 @@ func (s *APIService) CreateAPISource(endpointID int, sourceName, baseURL string,
 	return s.db.CreateAPISource(endpointID, sourceName, baseURL, priority, isPrimary)
 }
 
+// CreateAPISourceForAllEndpoints creates a new API source for all endpoints in a category
+func (s *APIService) CreateAPISourceForAllEndpoints(categoryName, sourceName, baseURL string, priority int, isPrimary bool) error {
+	// Get all endpoints for the specified category
+	endpoints, err := s.db.GetEndpointsByCategory(categoryName)
+	if err != nil {
+		return fmt.Errorf("failed to get endpoints for category %s: %v", categoryName, err)
+	}
+
+	if len(endpoints) == 0 {
+		return fmt.Errorf("no endpoints found for category: %s", categoryName)
+	}
+
+	// Create API source for each endpoint
+	var errors []string
+	successCount := 0
+
+	for _, endpoint := range endpoints {
+		err := s.db.CreateAPISource(endpoint.ID, sourceName, baseURL, priority, isPrimary)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("endpoint %s (ID: %d): %v", endpoint.Path, endpoint.ID, err))
+		} else {
+			successCount++
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("partially failed - %d success, %d errors: %s",
+			successCount, len(errors), strings.Join(errors, "; "))
+	}
+
+	return nil
+}
+
 // UpdateAPISource updates an existing API source
 func (s *APIService) UpdateAPISource(id int, sourceName, baseURL string, priority int, isPrimary, isActive bool) error {
 	return s.db.UpdateAPISource(id, sourceName, baseURL, priority, isPrimary, isActive)
@@ -762,6 +835,16 @@ func (s *APIService) RunManualHealthCheck() (map[string]interface{}, error) {
 	results["timestamp"] = time.Now().Format("2006-01-02 15:04:05")
 
 	return results, nil
+}
+
+// DeleteAPISourceByName deletes all API sources with the given source name
+func (s *APIService) DeleteAPISourceByName(sourceName string) error {
+	return s.db.DeleteAPISourceByName(sourceName)
+}
+
+// GetAPISourcesByName returns all API sources with the given source name
+func (s *APIService) GetAPISourcesByName(sourceName string) ([]database.APISourceWithDetails, error) {
+	return s.db.GetAPISourcesByName(sourceName)
 }
 
 // GetCategories returns all categories
@@ -880,12 +963,22 @@ func (s *APIService) tryAllPrimaryAPIsWithFallback(sources []database.APISource,
 	for _, source := range sources {
 		if source.IsPrimary && source.IsActive {
 			primarySources = append(primarySources, source)
+			logger.Infof("Found primary source: %s (ID: %d)", source.SourceName, source.ID)
 		}
 	}
 
 	if len(primarySources) == 0 {
 		logger.Warnf("No primary sources available for %s in category %s", ctx.Endpoint, ctx.Category)
 		return &domain.FallbackResult{Success: false}
+	}
+
+	logger.Infof("Total primary sources found: %d", len(primarySources))
+
+	// Special handling for detail endpoints - bruteforce all sources and return first valid
+	// Support both with and without trailing slash
+	if ctx.Endpoint == "/api/v1/anime-detail/" || ctx.Endpoint == "/api/v1/anime-detail" ||
+		ctx.Endpoint == "/api/v1/episode-detail/" || ctx.Endpoint == "/api/v1/episode-detail" {
+		return s.bruteforceDetailSources(primarySources, ctx)
 	}
 
 	// Create channels for concurrent requests
@@ -945,23 +1038,44 @@ func (s *APIService) tryAllPrimaryAPIsWithFallback(sources []database.APISource,
 
 // trySourceWithFallback tries a primary source and its fallbacks
 func (s *APIService) trySourceWithFallback(source database.APISource, ctx *domain.RequestContext, resultChan chan<- *domain.APIResponse) {
-	logger.Infof("Trying primary source: %s", source.SourceName)
+	logger.Infof("Trying primary source: %s (ID: %d, BaseURL: %s)", source.SourceName, source.ID, source.BaseURL)
 
 	// Try primary source first
 	url := s.buildURL(source.BaseURL, ctx.Endpoint, ctx.Parameters)
+	logger.Infof("Built URL for %s: %s", source.SourceName, url)
 	resp := s.makeAPIRequest(url, source.SourceName, false)
+
+	// Special debug for winbutv
+	if source.SourceName == "winbutv" {
+		logger.Infof("WINBUTV DEBUG: Error=%v, DataLen=%d, StatusCode=%d", resp.Error, len(resp.Data), resp.StatusCode)
+		if resp.Data != nil {
+			maxLen := 200
+			if len(resp.Data) < maxLen {
+				maxLen = len(resp.Data)
+			}
+			logger.Infof("WINBUTV DEBUG: First %d chars of response: %s", maxLen, string(resp.Data[:maxLen]))
+		}
+	}
 
 	// Validate response
 	if resp.Error == nil && resp.Data != nil {
 		if err := validator.ValidateResponse(ctx.Endpoint, resp.Data); err != nil {
 			logger.Warnf("Validation failed for %s: %v", source.SourceName, err)
+			if source.SourceName == "winbutv" {
+				logger.Errorf("WINBUTV VALIDATION FAILED: %v", err)
+			}
 			resp.Error = err
 		} else {
 			// Primary source successful
-			logger.Infof("Primary source %s successful", source.SourceName)
+			logger.Infof("Primary source %s successful with %d bytes of data", source.SourceName, len(resp.Data))
+			if source.SourceName == "winbutv" {
+				logger.Infof("WINBUTV SUCCESS: Sending to result channel")
+			}
 			resultChan <- resp
 			return
 		}
+	} else {
+		logger.Warnf("Primary source %s failed: Error=%v, DataLen=%d", source.SourceName, resp.Error, len(resp.Data))
 	}
 
 	// Primary failed, try fallbacks
@@ -993,6 +1107,174 @@ func (s *APIService) trySourceWithFallback(source database.APISource, ctx *domai
 	}
 
 	logger.Warnf("All attempts failed for source %s", source.SourceName)
+}
+
+// bruteforceDetailSources implements parallel bruteforce approach for detail endpoints
+// This method hits ALL available sources concurrently and returns the first valid response
+func (s *APIService) bruteforceDetailSources(primarySources []database.APISource, ctx *domain.RequestContext) *domain.FallbackResult {
+	logger.Infof("Starting bruteforce approach for %s - hitting all %d sources concurrently", ctx.Endpoint, len(primarySources))
+
+	// Collect all available URLs (primary + fallbacks)
+	var allSources []bruteforceSource
+	for _, source := range primarySources {
+		// Add primary source
+		primaryURL := s.buildURL(source.BaseURL, ctx.Endpoint, ctx.Parameters)
+		allSources = append(allSources, bruteforceSource{
+			URL:        primaryURL,
+			SourceName: source.SourceName,
+			Priority:   source.Priority,
+			IsFallback: false,
+		})
+
+		// Add fallback sources
+		fallbacks, err := s.db.GetFallbackAPIs(source.ID)
+		if err != nil {
+			logger.Warnf("Failed to get fallback APIs for source %s: %v", source.SourceName, err)
+			continue
+		}
+
+		for i, fallback := range fallbacks {
+			fallbackURL := s.buildURL(fallback.FallbackURL, ctx.Endpoint, ctx.Parameters)
+			allSources = append(allSources, bruteforceSource{
+				URL:        fallbackURL,
+				SourceName: fmt.Sprintf("%s_fallback_%d", source.SourceName, i+1),
+				Priority:   source.Priority + 1000 + i, // Lower priority than primary
+				IsFallback: true,
+			})
+		}
+	}
+
+	if len(allSources) == 0 {
+		logger.Warnf("No sources available for bruteforce")
+		return &domain.FallbackResult{Success: false}
+	}
+
+	logger.Infof("Bruteforcing %d total sources (primary + fallback)", len(allSources))
+
+	// Channel to receive results
+	resultChan := make(chan *domain.APIResponse, len(allSources))
+	firstValidChan := make(chan *domain.APIResponse, 1)
+	var wg sync.WaitGroup
+	var once sync.Once
+
+	// Start all requests concurrently
+	for _, source := range allSources {
+		wg.Add(1)
+		go func(src bruteforceSource) {
+			defer wg.Done()
+
+			logger.Debugf("Trying source: %s at %s", src.SourceName, src.URL)
+			resp := s.makeAPIRequest(src.URL, src.SourceName, src.IsFallback)
+
+			// Check if response is valid
+			if resp.Error == nil && resp.Data != nil {
+				if err := validator.ValidateResponse(ctx.Endpoint, resp.Data); err != nil {
+					logger.Warnf("Validation failed for %s: %v", src.SourceName, err)
+					resp.Error = err
+					resultChan <- resp
+					return
+				}
+
+				logger.Infof("✓ Valid data found from source: %s", src.SourceName)
+				resp.Priority = src.Priority // Store priority for sorting
+
+				// Send to result channel for collection
+				resultChan <- resp
+
+				// Try to send to first valid channel (non-blocking)
+				// This allows us to return immediately when we get the first valid result
+				once.Do(func() {
+					select {
+					case firstValidChan <- resp:
+						logger.Infof("First valid response selected from: %s", src.SourceName)
+					default:
+						// Channel already has a response
+					}
+				})
+			} else {
+				logger.Debugf("Failed to get valid data from %s: %v", src.SourceName, resp.Error)
+				resultChan <- resp
+			}
+		}(source)
+	}
+
+	// Close channels when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(resultChan)
+		close(firstValidChan)
+	}()
+
+	// Wait for first valid response or all to complete
+	select {
+	case validResp, ok := <-firstValidChan:
+		// Check if channel is still open and we got a valid response
+		if ok && validResp != nil {
+			logger.Infof("Bruteforce SUCCESS: Got valid data from %s", validResp.SourceName)
+
+			// Still wait for other goroutines to complete to avoid resource leaks
+			go func() {
+				wg.Wait()
+				logger.Debugf("All bruteforce goroutines completed")
+			}()
+
+			return &domain.FallbackResult{
+				Success:      true,
+				Response:     validResp,
+				SourceUsed:   validResp.SourceName,
+				FallbackUsed: validResp.IsFallback,
+			}
+		} else {
+			logger.Warnf("Received nil or closed channel in firstValidChan")
+		}
+	case <-time.After(time.Duration(len(allSources)) * time.Second * 2): // Dynamic timeout based on source count
+		// Timeout - collect any results we got
+		logger.Warnf("Bruteforce timeout reached, collecting partial results")
+
+		var allResponses []*domain.APIResponse
+		// Drain the result channel
+		func() {
+			for {
+				select {
+				case resp := <-resultChan:
+					allResponses = append(allResponses, resp)
+				default:
+					return
+				}
+			}
+		}()
+
+		// Find best valid response if any
+		var bestValid *domain.APIResponse
+		bestPriority := 999999
+		for _, resp := range allResponses {
+			if resp.Error == nil && resp.Priority < bestPriority {
+				bestValid = resp
+				bestPriority = resp.Priority
+			}
+		}
+
+		if bestValid != nil {
+			logger.Infof("Found valid response after timeout from: %s", bestValid.SourceName)
+			return &domain.FallbackResult{
+				Success:      true,
+				Response:     bestValid,
+				SourceUsed:   bestValid.SourceName,
+				FallbackUsed: bestValid.IsFallback,
+			}
+		}
+	}
+
+	logger.Errorf("Bruteforce FAILED: No valid data found from any of %d sources", len(allSources))
+	return &domain.FallbackResult{Success: false}
+}
+
+// bruteforceSource represents a source for bruteforce attempt
+type bruteforceSource struct {
+	URL        string
+	SourceName string
+	Priority   int
+	IsFallback bool
 }
 
 // aggregateResponsesFromAllCategories combines responses from different categories

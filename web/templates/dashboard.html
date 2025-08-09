@@ -1,377 +1,352 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.title}}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#0a0a0a',
+                        'dark-surface': '#1a1a1a',
+                        'dark-card': '#262626',
+                        'red-primary': '#dc2626',
+                        'red-secondary': '#ef4444',
+                        'red-accent': '#fca5a5',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; box-shadow: 0 0 5px #dc2626; }
+            50% { opacity: 0.7; box-shadow: 0 0 20px #dc2626; }
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
+        .pulse-glow { animation: pulse-glow 2s infinite; }
+        
+        @keyframes slideInUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .slide-in { animation: slideInUp 0.6s ease-out; }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-        }
-
-        .navbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .navbar-brand h1 {
-            margin: 0;
-            font-size: 1.8rem;
-            font-weight: 600;
-        }
-
-        .navbar-brand .status-badge {
-            background: rgba(255,255,255,0.2);
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .navbar-nav {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-        }
-
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-            font-weight: 500;
-        }
-
-        .nav-link:hover {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .nav-link.active {
-            background: rgba(255,255,255,0.2);
-        }
-
-        .system-status {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #4CAF50;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        
+        .card-hover {
             transition: all 0.3s ease;
-            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .card-hover:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(220, 38, 38, 0.2);
         }
 
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-        }
 
-        .card.success {
-            border-left: 4px solid #4CAF50;
-        }
-
-        .card.warning {
-            border-left: 4px solid #FF9800;
-        }
-
-        .card.error {
-            border-left: 4px solid #F44336;
-        }
-
-        .card.info {
-            border-left: 4px solid #2196F3;
-        }
-
-        .card h3 {
-            color: #667eea;
-            margin-bottom: 1rem;
-            font-size: 1.2rem;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
-        }
-
-        .status-ok { background-color: #4CAF50; }
-        .status-warning { background-color: #FF9800; }
-        .status-error { background-color: #F44336; }
-
-        .table-container {
-            background: white;
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: opacity 0.2s ease;
-        }
-
-        .btn:hover {
-            opacity: 0.9;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #666;
-        }
-
-        .error {
-            background-color: #ffebee;
-            color: #c62828;
-            padding: 1rem;
-            border-radius: 5px;
-            margin-bottom: 1rem;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 0 1rem;
-            }
-            
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-        }
     </style>
 </head>
-<body>
-    <div class="header">
-        <nav class="navbar">
-            <div class="navbar-brand">
-                <h1>🚀 API Fallback</h1>
-                <span class="status-badge" id="system-status-badge">System Online</span>
+<body class="bg-dark-bg text-white min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-dark-surface to-dark-card border-b border-red-primary/20 shadow-lg">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand -->
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-red-primary to-red-secondary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-rocket text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold gradient-text">API Fallback</h1>
+                            <span class="text-xs text-gray-400">System Dashboard</span>
+                        </div>
+                    </div>
+                    <div class="hidden sm:block">
+                        <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium" id="system-status-badge">
+                            <i class="fas fa-circle pulse-glow text-green-400 mr-1"></i>
+                            System Online
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="flex items-center space-x-6">
+                    <div class="hidden md:flex items-center space-x-4">
+                        <a href="/dashboard/" class="flex items-center space-x-2 px-4 py-2 bg-red-primary/20 text-red-accent rounded-lg font-medium transition-all hover:bg-red-primary/30">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/dashboard/management" class="flex items-center space-x-2 px-4 py-2 text-gray-300 rounded-lg font-medium transition-all hover:bg-dark-card hover:text-white">
+                            <i class="fas fa-cogs"></i>
+                            <span>Management</span>
+                        </a>
+                        <a href="/swagger/index.html" target="_blank" class="flex items-center space-x-2 px-4 py-2 text-gray-300 rounded-lg font-medium transition-all hover:bg-dark-card hover:text-white">
+                            <i class="fas fa-book"></i>
+                            <span>API Docs</span>
+                        </a>
+                    </div>
+                    
+                    <!-- Status Indicator -->
+                    <div class="flex items-center space-x-2 px-3 py-2 bg-dark-card rounded-lg">
+                        <div class="w-2 h-2 bg-green-400 rounded-full pulse-glow"></div>
+                        <span class="text-sm text-gray-300" id="api-count">Loading...</span>
+                    </div>
+
+                    <!-- Mobile Menu Button -->
+                    <button class="md:hidden p-2 rounded-lg text-gray-300 hover:bg-dark-card" onclick="toggleMobileMenu()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
             </div>
-            <div class="navbar-nav">
-                <a href="/dashboard/" class="nav-link active">📊 Dashboard</a>
-                <a href="/dashboard/management" class="nav-link">⚙️ Management</a>
-                <a href="/swagger/index.html" class="nav-link" target="_blank">📚 API Docs</a>
-                <div class="system-status">
-                    <span class="status-dot" id="status-dot"></span>
-                    <span id="api-count">Loading...</span>
+
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden md:hidden pb-4">
+                <div class="flex flex-col space-y-2">
+                    <a href="/dashboard/" class="flex items-center space-x-2 px-4 py-2 bg-red-primary/20 text-red-accent rounded-lg font-medium">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/dashboard/management" class="flex items-center space-x-2 px-4 py-2 text-gray-300 rounded-lg font-medium hover:bg-dark-card">
+                        <i class="fas fa-cogs"></i>
+                        <span>Management</span>
+                    </a>
+                    <a href="/swagger/index.html" target="_blank" class="flex items-center space-x-2 px-4 py-2 text-gray-300 rounded-lg font-medium hover:bg-dark-card">
+                        <i class="fas fa-book"></i>
+                        <span>API Docs</span>
+                    </a>
                 </div>
             </div>
         </nav>
-    </div>
+    </header>
 
-    <div class="container">
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Statistics Cards -->
-        <div class="dashboard-grid">
-            <div class="card">
-                <h3>Total Requests</h3>
-                <div class="stat-value" id="total-requests">-</div>
-                <div class="stat-label">Last 24 hours</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+            <!-- Total Requests -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card p-6 rounded-xl border border-red-primary/20 card-hover slide-in">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm font-medium">Total Requests</p>
+                        <p class="text-2xl font-bold text-white mt-1" id="total-requests">-</p>
+                        <p class="text-xs text-gray-500 mt-1">Last 24 hours</p>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-bar text-blue-400 text-xl"></i>
+                    </div>
+                </div>
             </div>
-            
-            <div class="card">
-                <h3>Success Rate</h3>
-                <div class="stat-value" id="success-rate">-</div>
-                <div class="stat-label">Successful responses</div>
+
+            <!-- Success Rate -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card p-6 rounded-xl border border-red-primary/20 card-hover slide-in" style="animation-delay: 0.1s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm font-medium">Success Rate</p>
+                        <p class="text-2xl font-bold text-white mt-1" id="success-rate">-</p>
+                        <p class="text-xs text-gray-500 mt-1">Successful responses</p>
+                    </div>
+                    <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-check-circle text-green-400 text-xl"></i>
+                    </div>
+                </div>
             </div>
-            
-            <div class="card">
-                <h3>Fallback Usage</h3>
-                <div class="stat-value" id="fallback-usage">-</div>
-                <div class="stat-label">Fallback API calls</div>
+
+            <!-- Fallback Usage -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card p-6 rounded-xl border border-red-primary/20 card-hover slide-in" style="animation-delay: 0.2s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm font-medium">Fallback Usage</p>
+                        <p class="text-2xl font-bold text-white mt-1" id="fallback-usage">-</p>
+                        <p class="text-xs text-gray-500 mt-1">Fallback API calls</p>
+                    </div>
+                    <div class="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-exchange-alt text-yellow-400 text-xl"></i>
+                    </div>
+                </div>
             </div>
-            
-            <div class="card">
-                <h3>Average Response Time</h3>
-                <div class="stat-value" id="avg-response-time">-</div>
-                <div class="stat-label">Milliseconds</div>
+
+            <!-- Response Time -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card p-6 rounded-xl border border-red-primary/20 card-hover slide-in" style="animation-delay: 0.3s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm font-medium">Avg Response Time</p>
+                        <p class="text-2xl font-bold text-white mt-1" id="avg-response-time">-</p>
+                        <p class="text-xs text-gray-500 mt-1">Milliseconds</p>
+                    </div>
+                    <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-clock text-purple-400 text-xl"></i>
+                    </div>
+                </div>
             </div>
-            
-            <div class="card" id="api-health-card">
-                <h3>API Health Status</h3>
-                <div class="stat-value" id="healthy-apis">-</div>
-                <div class="stat-label" id="api-health-label">APIs Online</div>
+
+            <!-- API Health -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card p-6 rounded-xl border border-red-primary/20 card-hover slide-in" style="animation-delay: 0.4s" id="api-health-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm font-medium">API Health</p>
+                        <p class="text-2xl font-bold text-white mt-1" id="healthy-apis">-</p>
+                        <p class="text-xs text-gray-500 mt-1" id="api-health-label">APIs Online</p>
+                    </div>
+                    <div class="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-heartbeat text-red-400 text-xl"></i>
+                    </div>
+                </div>
             </div>
-            
-            <div class="card info">
-                <h3>Active Endpoints</h3>
-                <div class="stat-value" id="active-endpoints">-</div>
-                <div class="stat-label">Configured endpoints</div>
+
+            <!-- Active Endpoints -->
+            <div class="bg-gradient-to-br from-dark-surface to-dark-card p-6 rounded-xl border border-red-primary/20 card-hover slide-in" style="animation-delay: 0.5s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm font-medium">Active Endpoints</p>
+                        <p class="text-2xl font-bold text-white mt-1" id="active-endpoints">-</p>
+                        <p class="text-xs text-gray-500 mt-1">Configured endpoints</p>
+                    </div>
+                    <div class="w-12 h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-plug text-indigo-400 text-xl"></i>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Health Status -->
-        <div class="table-container">
-            <h3>API Health Status</h3>
-            <div style="margin-bottom: 1rem;">
-                <button id="manualHealthCheck" class="btn" onclick="runManualHealthCheck()">
-                    🔄 Check All APIs Now
-                </button>
-                <span id="healthCheckStatus" style="margin-left: 1rem; color: #666;"></span>
+        <!-- API Health Status -->
+        <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 mb-8 slide-in">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                <h3 class="text-xl font-bold gradient-text flex items-center">
+                    <i class="fas fa-heartbeat mr-3"></i>
+                    API Health Status
+                </h3>
+                <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+                    <button id="manualHealthCheck" onclick="runManualHealthCheck()" 
+                            class="flex items-center space-x-2 px-4 py-2 bg-red-primary hover:bg-red-secondary text-white rounded-lg font-medium transition-all transform hover:scale-105">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Check All APIs</span>
+                    </button>
+                    <span id="healthCheckStatus" class="text-sm text-gray-400"></span>
+                </div>
             </div>
-            <div id="health-status-loading" class="loading">Loading health status...</div>
-            <div id="health-status-error" class="error" style="display: none;"></div>
-            <table id="health-status-table" style="display: none;">
-                <thead>
-                    <tr>
-                        <th>Status</th>
-                        <th>API Source</th>
-                        <th>Response Time</th>
-                        <th>Last Checked</th>
-                        <th>Error Message</th>
-                    </tr>
-                </thead>
-                <tbody id="health-status-body">
-                </tbody>
-            </table>
+
+            <div id="health-status-loading" class="text-center py-8 text-gray-400">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading health status...</p>
+            </div>
+
+            <div id="health-status-error" class="hidden bg-red-500/20 border border-red-500/50 text-red-300 p-4 rounded-lg mb-4">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span></span>
+            </div>
+
+            <div id="health-status-table" class="hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Status</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">API Source</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Response Time</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Last Checked</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Error Message</th>
+                        </tr>
+                    </thead>
+                    <tbody id="health-status-body" class="divide-y divide-gray-700">
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <!-- API Source Information -->
-        <div class="table-container" style="margin-top: 2rem;">
-            <h3>API Source Configuration & Filtering</h3>
-            <p style="color: #666; margin-bottom: 1rem;">
+        <!-- API Source Configuration -->
+        <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 mb-8 slide-in">
+            <h3 class="text-xl font-bold gradient-text flex items-center mb-6">
+                <i class="fas fa-cogs mr-3"></i>
+                API Source Configuration & Filtering
+            </h3>
+            <p class="text-gray-400 mb-6">
                 This shows how category filters are applied to select appropriate API sources for different content types.
             </p>
-            <div id="sources-loading" class="loading">Loading API sources...</div>
-            <div id="sources-error" class="error" style="display: none;"></div>
-            <table id="sources-table" style="display: none;">
-                <thead>
-                    <tr>
-                        <th>Source Name</th>
-                        <th>Endpoint</th>
-                        <th>Category Filter</th>
-                        <th>Priority</th>
-                        <th>Status</th>
-                        <th>Base URL</th>
-                    </tr>
-                </thead>
-                <tbody id="sources-body">
-                </tbody>
-            </table>
+
+            <div id="sources-loading" class="text-center py-8 text-gray-400">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading API sources...</p>
+            </div>
+
+            <div id="sources-error" class="hidden bg-red-500/20 border border-red-500/50 text-red-300 p-4 rounded-lg mb-4">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span></span>
+            </div>
+
+            <div id="sources-table" class="hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Source Name</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Endpoint</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Category Filter</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Priority</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Status</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Base URL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sources-body" class="divide-y divide-gray-700">
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <!-- Recent Enhanced Requests -->
-        <div class="table-container" style="margin-top: 2rem;">
-            <h3>Recent API Requests with Source Information</h3>
-            <p style="color: #666; margin-bottom: 1rem;">
+        <!-- Recent API Requests -->
+        <div class="bg-gradient-to-br from-dark-surface to-dark-card rounded-xl border border-red-primary/20 p-6 slide-in">
+            <h3 class="text-xl font-bold gradient-text flex items-center mb-6">
+                <i class="fas fa-history mr-3"></i>
+                Recent API Requests with Source Information
+            </h3>
+            <p class="text-gray-400 mb-6">
                 Enhanced request logs showing which API sources were used, categories applied, and fallback information.
             </p>
-            <div id="logs-loading" class="loading">Loading request logs...</div>
-            <div id="logs-error" class="error" style="display: none;"></div>
-            <table id="logs-table" style="display: none;">
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Endpoint</th>
-                        <th>Category Filter</th>
-                        <th>Source Used</th>
-                        <th>Fallback Chain</th>
-                        <th>Response Time</th>
-                        <th>Total Attempts</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="logs-body">
-                </tbody>
-            </table>
+
+            <div id="logs-loading" class="text-center py-8 text-gray-400">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading request logs...</p>
+            </div>
+
+            <div id="logs-error" class="hidden bg-red-500/20 border border-red-500/50 text-red-300 p-4 rounded-lg mb-4">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span></span>
+            </div>
+
+            <div id="logs-table" class="hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Timestamp</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Endpoint</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Category Filter</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Source Used</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Fallback Chain</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Response Time</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Total Attempts</th>
+                            <th class="text-left py-3 px-4 text-gray-300 font-medium">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-body" class="divide-y divide-gray-700">
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    </main>
 
     <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
         // Load dashboard data
         async function loadDashboardData() {
             try {
@@ -384,15 +359,22 @@
                     const successfulRequests = statsData.data.successful_requests || 0;
                     const successRate = totalRequests > 0 ? Math.round((successfulRequests / totalRequests) * 100) : 100;
                     
-                    document.getElementById('total-requests').textContent = totalRequests;
+                    document.getElementById('total-requests').textContent = totalRequests.toLocaleString();
                     document.getElementById('success-rate').textContent = successRate + '%';
-                    document.getElementById('fallback-usage').textContent = statsData.data.fallback_usage || '0';
+                    document.getElementById('fallback-usage').textContent = (statsData.data.fallback_usage || 0).toLocaleString();
                     document.getElementById('avg-response-time').textContent = 
                         Math.round(statsData.data.average_response_time || 0) + 'ms';
                     
-                    // Update card colors based on success rate
-                    const successCard = document.querySelector('#success-rate').closest('.card');
-                    successCard.className = 'card ' + (successRate >= 80 ? 'success' : successRate >= 50 ? 'warning' : 'error');
+                    // Update success rate card color
+                    const successRateCard = document.getElementById('success-rate').closest('.card-hover');
+                    const successRateIcon = successRateCard.querySelector('.fa-check-circle');
+                    if (successRate >= 80) {
+                        successRateIcon.className = 'fas fa-check-circle text-green-400 text-xl';
+                    } else if (successRate >= 50) {
+                        successRateIcon.className = 'fas fa-exclamation-triangle text-yellow-400 text-xl';
+                    } else {
+                        successRateIcon.className = 'fas fa-times-circle text-red-400 text-xl';
+                    }
                 }
             } catch (error) {
                 console.error('Failed to load statistics:', error);
@@ -404,322 +386,249 @@
                 const healthData = await healthResponse.json();
                 
                 if (healthData.status === 'success' && healthData.data) {
+                    displayHealthStatus(healthData.data);
+                    
+                    // Update health summary
                     const healthyCount = healthData.data.filter(api => api.status === 'healthy').length;
                     const totalCount = healthData.data.length;
-                    const healthPercentage = totalCount > 0 ? Math.round((healthyCount / totalCount) * 100) : 100;
                     
                     document.getElementById('healthy-apis').textContent = `${healthyCount}/${totalCount}`;
-                    document.getElementById('api-health-label').textContent = `${healthPercentage}% Healthy`;
-                    document.getElementById('api-count').textContent = `${healthyCount}/${totalCount} APIs Online`;
+                    document.getElementById('api-health-label').textContent = 'APIs Online';
                     
-                    // Update API health card color
+                    // Update health card color
                     const healthCard = document.getElementById('api-health-card');
-                    healthCard.className = 'card ' + (healthPercentage >= 80 ? 'success' : healthPercentage >= 50 ? 'warning' : 'error');
-                    
-                    // Update status dot color
-                    const statusDot = document.getElementById('status-dot');
-                    statusDot.style.background = healthPercentage >= 80 ? '#4CAF50' : healthPercentage >= 50 ? '#FF9800' : '#F44336';
-                    
-                    // Update system status badge
-                    const statusBadge = document.getElementById('system-status-badge');
-                    statusBadge.textContent = healthPercentage >= 80 ? 'System Online' : healthPercentage >= 50 ? 'Partial Outage' : 'System Issues';
-                }
-                
-                // Load endpoints count
-                const endpointsResponse = await fetch('/dashboard/endpoints');
-                const endpointsData = await endpointsResponse.json();
-                
-                if (endpointsData.status === 'success' && endpointsData.data) {
-                    document.getElementById('active-endpoints').textContent = endpointsData.data.length;
-                }
-                
-                document.getElementById('health-status-loading').style.display = 'none';
-                
-                if (healthData.status === 'success') {
-                    displayHealthStatus(healthData.data);
+                    const healthIcon = healthCard.querySelector('.fa-heartbeat');
+                    if (healthyCount === totalCount) {
+                        healthIcon.className = 'fas fa-heartbeat text-green-400 text-xl';
+                    } else if (healthyCount > totalCount / 2) {
+                        healthIcon.className = 'fas fa-heartbeat text-yellow-400 text-xl';
+                    } else {
+                        healthIcon.className = 'fas fa-heartbeat text-red-400 text-xl';
+                    }
                 } else {
-                    document.getElementById('health-status-error').textContent = 
-                        healthData.error || 'Failed to load health status';
+                    document.getElementById('health-status-loading').style.display = 'none';
                     document.getElementById('health-status-error').style.display = 'block';
+                    document.getElementById('health-status-error').querySelector('span').textContent = 
+                        healthData.message || 'Failed to load health status';
                 }
             } catch (error) {
+                console.error('Failed to load health status:', error);
                 document.getElementById('health-status-loading').style.display = 'none';
-                document.getElementById('health-status-error').textContent = 'Failed to load health status';
                 document.getElementById('health-status-error').style.display = 'block';
+                document.getElementById('health-status-error').querySelector('span').textContent = 
+                    'Network error loading health status';
             }
 
-            // Load request logs
-            try {
-                const logsResponse = await fetch('/dashboard/logs?limit=50');
-                const logsData = await logsResponse.json();
-                
-                document.getElementById('logs-loading').style.display = 'none';
-                
-                if (logsData.status === 'success') {
-                    displayRequestLogs(logsData.data);
-                } else {
-                    document.getElementById('logs-error').textContent = 
-                        logsData.error || 'Failed to load request logs';
-                    document.getElementById('logs-error').style.display = 'block';
-                }
-            } catch (error) {
-                document.getElementById('logs-loading').style.display = 'none';
-                document.getElementById('logs-error').textContent = 'Failed to load request logs';
-                document.getElementById('logs-error').style.display = 'block';
-            }
-
-            // Load API sources configuration
+            // Load API sources
             try {
                 const sourcesResponse = await fetch('/dashboard/api-sources');
                 const sourcesData = await sourcesResponse.json();
                 
-                document.getElementById('sources-loading').style.display = 'none';
-                
-                if (sourcesData.status === 'success') {
-                    displayAPISources(sourcesData.data);
-                } else {
-                    document.getElementById('sources-error').textContent = 
-                        sourcesData.error || 'Failed to load API sources';
-                    document.getElementById('sources-error').style.display = 'block';
-                }
-            } catch (error) {
-                document.getElementById('sources-loading').style.display = 'none';
-                document.getElementById('sources-error').textContent = 'Failed to load API sources configuration';
-                document.getElementById('sources-error').style.display = 'block';
-            }
-        }
-
-        // Manual health check function
-        async function runManualHealthCheck() {
-            const button = document.getElementById('manualHealthCheck');
-            const status = document.getElementById('healthCheckStatus');
-            
-            // Disable button and show loading
-            button.disabled = true;
-            button.textContent = '🔄 Checking...';
-            status.textContent = 'Running health checks...';
-            status.style.color = '#666';
-            
-            try {
-                const response = await fetch('/dashboard/health/check', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    status.textContent = `✅ Checked ${data.data.total_checked} APIs - ${data.data.healthy} healthy, ${data.data.unhealthy} unhealthy (${data.data.timestamp})`;
-                    status.style.color = '#4CAF50';
+                if (sourcesData.status === 'success' && sourcesData.data) {
+                    displaySources(sourcesData.data);
                     
-                    // Reload health status to show updated data
-                    setTimeout(() => {
-                        loadDashboardData(); // Reload all data
-                    }, 1000);
+                    // Update active endpoints count
+                    const activeCount = sourcesData.data.filter(source => source.is_active).length;
+                    document.getElementById('active-endpoints').textContent = activeCount;
                 } else {
-                    status.textContent = '❌ Health check failed: ' + (data.error || 'Unknown error');
-                    status.style.color = '#F44336';
+                    document.getElementById('sources-loading').style.display = 'none';
+                    document.getElementById('sources-error').style.display = 'block';
+                    document.getElementById('sources-error').querySelector('span').textContent = 
+                        sourcesData.message || 'Failed to load API sources';
                 }
             } catch (error) {
-                status.textContent = '❌ Error running health check: ' + error.message;
-                status.style.color = '#F44336';
-            } finally {
-                // Re-enable button
-                button.disabled = false;
-                button.textContent = '🔄 Check All APIs Now';
+                console.error('Failed to load API sources:', error);
+                document.getElementById('sources-loading').style.display = 'none';
+                document.getElementById('sources-error').style.display = 'block';
+                document.getElementById('sources-error').querySelector('span').textContent = 
+                    'Network error loading API sources';
             }
+
+            // Load request logs
+            try {
+                const logsResponse = await fetch('/dashboard/logs');
+                const logsData = await logsResponse.json();
+                
+                if (logsData.status === 'success' && logsData.data) {
+                    displayLogs(logsData.data);
+                } else {
+                    document.getElementById('logs-loading').style.display = 'none';
+                    document.getElementById('logs-error').style.display = 'block';
+                    document.getElementById('logs-error').querySelector('span').textContent = 
+                        logsData.message || 'Failed to load request logs';
+                }
+            } catch (error) {
+                console.error('Failed to load request logs:', error);
+                document.getElementById('logs-loading').style.display = 'none';
+                document.getElementById('logs-error').style.display = 'block';
+                document.getElementById('logs-error').querySelector('span').textContent = 
+                    'Network error loading request logs';
+            }
+
+            // Update API count in header
+            updateApiCount();
         }
 
         function displayHealthStatus(healthData) {
+            document.getElementById('health-status-loading').style.display = 'none';
+            document.getElementById('health-status-table').style.display = 'block';
+            
             const tbody = document.getElementById('health-status-body');
             tbody.innerHTML = '';
-
-            if (!healthData || healthData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">No health data available</td></tr>';
-            } else {
-                healthData.forEach(item => {
-                    const row = document.createElement('tr');
-                    
-                    const statusClass = item.status === 'healthy' ? 'status-ok' : 
-                                       item.status === 'timeout' ? 'status-warning' : 'status-error';
-                    
-                    const statusText = item.status === 'healthy' ? 'Healthy' : 
-                                      item.status === 'unhealthy' ? 'Unhealthy' : 
-                                      item.status.toUpperCase();
-                    
-                    row.innerHTML = `
-                        <td><span class="status-indicator ${statusClass}"></span>${statusText}</td>
-                        <td>${item.source_name || 'API Source ' + item.api_source_id}</td>
-                        <td>${item.response_time || 0}ms</td>
-                        <td>${item.checked_at || 'Never'}</td>
-                        <td>${item.error_message || '-'}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            }
-
-            document.getElementById('health-status-table').style.display = 'table';
+            
+            healthData.forEach(api => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-dark-card/50 transition-colors';
+                
+                const statusClass = api.status === 'healthy' ? 'text-green-400' : 'text-red-400';
+                const statusIcon = api.status === 'healthy' ? 'fa-check-circle' : 'fa-times-circle';
+                
+                row.innerHTML = `
+                    <td class="py-3 px-4">
+                        <span class="flex items-center">
+                            <i class="fas ${statusIcon} ${statusClass} mr-2"></i>
+                            <span class="${statusClass} font-medium">${api.status}</span>
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-gray-300">${api.source_name || 'Unknown'}</td>
+                    <td class="py-3 px-4 text-gray-300">${api.response_time || 'N/A'}</td>
+                    <td class="py-3 px-4 text-gray-300">${api.last_checked ? new Date(api.last_checked).toLocaleString() : 'Never'}</td>
+                    <td class="py-3 px-4 text-gray-300">${api.error_message || '-'}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
         }
 
-        function displayAPISources(sourcesData) {
+        function displaySources(sourcesData) {
+            document.getElementById('sources-loading').style.display = 'none';
+            document.getElementById('sources-table').style.display = 'block';
+            
             const tbody = document.getElementById('sources-body');
             tbody.innerHTML = '';
-
-            if (!sourcesData || sourcesData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">No API sources configured</td></tr>';
-            } else {
-                // Group sources by category for better display
-                const categories = {};
-                sourcesData.forEach(source => {
-                    const category = source.category_name || 'Unknown';
-                    if (!categories[category]) {
-                        categories[category] = [];
-                    }
-                    categories[category].push(source);
-                });
-
-                Object.keys(categories).forEach(category => {
-                    // Add category header
-                    const categoryRow = document.createElement('tr');
-                    categoryRow.style.backgroundColor = '#f8f9fa';
-                    categoryRow.style.fontWeight = 'bold';
-                    categoryRow.innerHTML = `
-                        <td colspan="6" style="padding: 12px; border-bottom: 2px solid #dee2e6;">
-                            📂 Category: ${category.toUpperCase()}
-                        </td>
-                    `;
-                    tbody.appendChild(categoryRow);
-
-                    // Add sources for this category
-                    categories[category].forEach(source => {
-                        const row = document.createElement('tr');
-                        
-                        const statusClass = source.is_active ? 'status-ok' : 'status-error';
-                        const statusText = source.is_active ? 'Active' : 'Inactive';
-                        const priorityText = source.is_primary ? `Primary (${source.priority})` : `Fallback (${source.priority})`;
-                        
-                        row.innerHTML = `
-                            <td style="padding-left: 20px;">
-                                <strong>${source.source_name}</strong>
-                                <br><small>${source.is_primary ? 'Primary Source' : 'Fallback Source'}</small>
-                            </td>
-                            <td><code>${source.endpoint_path}</code></td>
-                            <td><span style="background: #e3f2fd; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">${category}</span></td>
-                            <td>${priorityText}</td>
-                            <td><span class="status-indicator ${statusClass}"></span>${statusText}</td>
-                            <td><small>${source.base_url}</small></td>
-                        `;
-                        tbody.appendChild(row);
-                    });
-                });
-            }
-
-            document.getElementById('sources-table').style.display = 'table';
+            
+            sourcesData.forEach(source => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-dark-card/50 transition-colors';
+                
+                const statusClass = source.is_active ? 'text-green-400' : 'text-red-400';
+                const statusIcon = source.is_active ? 'fa-check-circle' : 'fa-times-circle';
+                
+                row.innerHTML = `
+                    <td class="py-3 px-4 text-gray-300 font-medium">${source.source_name || 'N/A'}</td>
+                    <td class="py-3 px-4 text-gray-300">${source.endpoint_path || 'N/A'}</td>
+                    <td class="py-3 px-4 text-gray-300">${source.category_name || 'All'}</td>
+                    <td class="py-3 px-4 text-gray-300">${source.priority || 'N/A'}</td>
+                    <td class="py-3 px-4">
+                        <span class="flex items-center">
+                            <i class="fas ${statusIcon} ${statusClass} mr-2"></i>
+                            <span class="${statusClass}">${source.is_active ? 'Active' : 'Inactive'}</span>
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-gray-300">${source.base_url || 'N/A'}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
         }
 
-        function displayRequestLogs(logsData) {
+        function displayLogs(logsData) {
+            document.getElementById('logs-loading').style.display = 'none';
+            document.getElementById('logs-table').style.display = 'block';
+            
             const tbody = document.getElementById('logs-body');
             tbody.innerHTML = '';
-
-            if (!logsData || logsData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666;">No request logs available</td></tr>';
-            } else {
-                logsData.forEach(log => {
-                    const row = document.createElement('tr');
-                    
-                    const statusColor = log.status_code >= 200 && log.status_code < 300 ? '#4CAF50' : '#F44336';
-                    
-                    // Format category filter display
-                    const categoryDisplay = log.category ? 
-                        `<span style="background: #e3f2fd; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">${log.category}</span>` : 
-                        '-';
-                    
-                    // Format fallback chain display
-                    const fallbackDisplay = log.fallback_used ? 
-                        '<span style="color: #FF9800; font-weight: bold;">✓ Fallback Used</span>' : 
-                        '<span style="color: #4CAF50;">✓ Primary Success</span>';
-                    
-                    // Format source used with badge
-                    const sourceDisplay = log.source_used ? 
-                        `<strong>${log.source_used}</strong><br><small style="color: #666;">via ${log.endpoint}</small>` : 
-                        '-';
-                    
-                    // Format timestamp
-                    const timestamp = log.created_at ? new Date(log.created_at).toLocaleString() : '-';
-                    
-                    row.innerHTML = `
-                        <td><small>${timestamp}</small></td>
-                        <td><code>${log.endpoint || '-'}</code></td>
-                        <td>${categoryDisplay}</td>
-                        <td>${sourceDisplay}</td>
-                        <td>${fallbackDisplay}</td>
-                        <td><strong>${log.response_time || 0}ms</strong></td>
-                        <td><span style="color: #666;">${log.total_attempts || 1} attempts</span></td>
-                        <td style="color: ${statusColor}; font-weight: bold;">${log.status_code || 'N/A'}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            }
-
-            document.getElementById('logs-table').style.display = 'table';
+            
+            logsData.forEach(log => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-dark-card/50 transition-colors';
+                
+                // Determine status based on status_code
+                const isSuccess = log.status_code >= 200 && log.status_code < 300;
+                const statusClass = isSuccess ? 'text-green-400' : 'text-red-400';
+                const statusIcon = isSuccess ? 'fa-check-circle' : 'fa-times-circle';
+                const statusText = isSuccess ? 'Success' : 'Error';
+                
+                // Format timestamp properly
+                const timestamp = log.created_at ? new Date(log.created_at).toLocaleString() : 'N/A';
+                
+                row.innerHTML = `
+                    <td class="py-3 px-4 text-gray-300">${timestamp}</td>
+                    <td class="py-3 px-4 text-gray-300">${log.endpoint || 'N/A'}</td>
+                    <td class="py-3 px-4 text-gray-300">${log.category || 'All'}</td>
+                    <td class="py-3 px-4 text-gray-300">${log.source_used || 'N/A'}</td>
+                    <td class="py-3 px-4 text-gray-300">${log.fallback_used ? 'Yes' : 'No'}</td>
+                    <td class="py-3 px-4 text-gray-300">${log.response_time || 0}ms</td>
+                    <td class="py-3 px-4 text-gray-300">1</td>
+                    <td class="py-3 px-4">
+                        <span class="flex items-center">
+                            <i class="fas ${statusIcon} ${statusClass} mr-2"></i>
+                            <span class="${statusClass}">${statusText} (${log.status_code || 'N/A'})</span>
+                        </span>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
         }
 
-        // Manual health check function
         async function runManualHealthCheck() {
             const button = document.getElementById('manualHealthCheck');
             const status = document.getElementById('healthCheckStatus');
             
-            // Disable button and show loading
             button.disabled = true;
-            button.innerHTML = '⏳ Checking...';
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Checking...';
             status.textContent = 'Running health check...';
-            status.style.color = '#2196F3';
             
             try {
-                const response = await fetch('/dashboard/health/check', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const response = await fetch('/dashboard/health/check', { method: 'POST' });
+                const data = await response.json();
                 
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    status.textContent = `✅ Checked ${result.data.total_checked} APIs - ${result.data.healthy} healthy, ${result.data.unhealthy} unhealthy`;
-                    status.style.color = '#4CAF50';
-                    
-                    // Reload health status data
+                if (data.status === 'success') {
+                    status.textContent = 'Health check completed successfully';
+                    // Reload health data
                     setTimeout(() => {
                         loadDashboardData();
                     }, 1000);
                 } else {
-                    status.textContent = '❌ Health check failed';
-                    status.style.color = '#F44336';
+                    status.textContent = 'Health check failed: ' + (data.message || 'Unknown error');
                 }
             } catch (error) {
-                console.error('Health check error:', error);
-                status.textContent = '❌ Health check failed';
-                status.style.color = '#F44336';
-            } finally {
-                // Re-enable button
-                button.disabled = false;
-                button.innerHTML = '🔄 Check All APIs Now';
+                console.error('Health check failed:', error);
+                status.textContent = 'Health check failed: Network error';
+            }
+            
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>Check All APIs';
+            
+            // Clear status after 5 seconds
+            setTimeout(() => {
+                status.textContent = '';
+            }, 5000);
+        }
+
+        async function updateApiCount() {
+            try {
+                const response = await fetch('/dashboard/api-sources');
+                const data = await response.json();
                 
-                // Clear status after 5 seconds
-                setTimeout(() => {
-                    status.textContent = '';
-                }, 5000);
+                if (data.status === 'success' && data.data) {
+                    const activeCount = data.data.filter(source => source.is_active).length;
+                    document.getElementById('api-count').textContent = `${activeCount} APIs Active`;
+                }
+            } catch (error) {
+                console.error('Failed to update API count:', error);
+                document.getElementById('api-count').textContent = 'API Count Unknown';
             }
         }
 
-        // Load data on page load
-        document.addEventListener('DOMContentLoaded', loadDashboardData);
-
-        // Refresh data every 30 seconds
-        setInterval(loadDashboardData, 30000);
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(loadDashboardData, 30000);
+        });
     </script>
 </body>
 </html>

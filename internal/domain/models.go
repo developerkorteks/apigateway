@@ -31,6 +31,7 @@ type APIResponse struct {
 	SourceName   string
 	Error        error
 	IsFallback   bool
+	Priority     int // Priority of the API source (lower number = higher priority)
 
 	// Enhanced metadata for response tracking
 	AllSourcesAttempted []string // All API sources that were attempted

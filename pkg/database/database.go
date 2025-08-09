@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -147,18 +148,131 @@ func (db *DB) insertDefaultData() error {
 		}
 	}
 
-	// Insert default API sources (using existing APIs from the project)
-	endpointID := 1 // /api/v1/home
-	_, err = db.Exec(`INSERT INTO api_sources (endpoint_id, source_name, base_url, priority, is_primary) 
-		VALUES (?, ?, ?, ?, ?)`, endpointID, "multiplescrape", "http://localhost:8081", 1, true)
+	// Insert default API sources for all endpoints
+	apiSources := map[string][]struct {
+		sourceName string
+		baseURL    string
+		priority   int
+	}{
+		"/api/v1/home": {
+			{"multiplescrape", "http://localhost:8081", 1},
+			{"winbutv", "http://localhost:8082", 2},
+		},
+		"/api/v1/jadwal-rilis": {
+			{"multiplescrape", "http://localhost:8081", 1},
+			{"winbutv", "http://localhost:8082", 2},
+		},
+		"/api/v1/anime-terbaru": {
+			{"multiplescrape", "http://localhost:8081", 1},
+			{"winbutv", "http://localhost:8082", 2},
+		},
+		"/api/v1/movie": {
+			{"multiplescrape", "http://localhost:8081", 1},
+			{"winbutv", "http://localhost:8082", 2},
+		},
+		"/api/v1/anime-detail": {
+			{"winbutv", "http://localhost:8082", 1},        // Primary scraper
+			{"multiplescrape", "http://localhost:8081", 2}, // Secondary
+			{"samehadaku", "https://samehadaku.email", 3},  // External scraper
+			{"otakudesu", "https://otakudesu.quest", 4},    // External scraper
+			{"kusonime", "https://kusonime.com", 5},        // External scraper
+		},
+		"/api/v1/episode-detail": {
+			{"winbutv", "http://localhost:8082", 1},
+			{"multiplescrape", "http://localhost:8081", 2},
+			{"samehadaku", "https://samehadaku.email", 3},
+			{"otakudesu", "https://otakudesu.quest", 4},
+		},
+		"/api/v1/search": {
+			{"multiplescrape", "http://localhost:8081", 1},
+			{"winbutv", "http://localhost:8082", 2},
+		},
+	}
+
+	// Get endpoint IDs first
+	endpointMap := make(map[string]int)
+	rows, err := db.Query("SELECT id, path FROM endpoints WHERE category_id = ?", categoryID)
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
-	_, err = db.Exec(`INSERT INTO api_sources (endpoint_id, source_name, base_url, priority, is_primary) 
-		VALUES (?, ?, ?, ?, ?)`, endpointID, "winbutv", "http://localhost:8082", 2, true)
-	if err != nil {
-		return err
+	for rows.Next() {
+		var id int
+		var path string
+		if err := rows.Scan(&id, &path); err != nil {
+			return err
+		}
+		endpointMap[path] = id
+	}
+
+	// Insert API sources for each endpoint
+	for endpointPath, sources := range apiSources {
+		endpointID, exists := endpointMap[endpointPath]
+		if !exists {
+			continue // Skip if endpoint doesn't exist
+		}
+
+		for _, source := range sources {
+			_, err = db.Exec(`INSERT INTO api_sources (endpoint_id, source_name, base_url, priority, is_primary, is_active) 
+				VALUES (?, ?, ?, ?, ?, ?)`, endpointID, source.sourceName, source.baseURL, source.priority, true, true)
+			if err != nil {
+				return err
+			}
+
+			// Add fallback URLs for external scrapers
+			if source.sourceName == "samehadaku" {
+				// Get the API source ID we just inserted
+				var apiSourceID int
+				err = db.QueryRow("SELECT id FROM api_sources WHERE endpoint_id = ? AND source_name = ? ORDER BY id DESC LIMIT 1",
+					endpointID, source.sourceName).Scan(&apiSourceID)
+				if err == nil {
+					// Add fallback URLs
+					fallbacks := []string{
+						"https://samehadaku.run",
+						"https://samehadaku.tv",
+						"https://samehadaku.fit",
+					}
+					for i, fallbackURL := range fallbacks {
+						db.Exec(`INSERT INTO fallback_apis (api_source_id, fallback_url, priority, is_active) 
+							VALUES (?, ?, ?, ?)`, apiSourceID, fallbackURL, i+1, true)
+					}
+				}
+			}
+
+			if source.sourceName == "otakudesu" {
+				var apiSourceID int
+				err = db.QueryRow("SELECT id FROM api_sources WHERE endpoint_id = ? AND source_name = ? ORDER BY id DESC LIMIT 1",
+					endpointID, source.sourceName).Scan(&apiSourceID)
+				if err == nil {
+					fallbacks := []string{
+						"https://otakudesu.dev",
+						"https://otakudesu.blue",
+						"https://otakudesu.cloud",
+					}
+					for i, fallbackURL := range fallbacks {
+						db.Exec(`INSERT INTO fallback_apis (api_source_id, fallback_url, priority, is_active) 
+							VALUES (?, ?, ?, ?)`, apiSourceID, fallbackURL, i+1, true)
+					}
+				}
+			}
+
+			if source.sourceName == "kusonime" {
+				var apiSourceID int
+				err = db.QueryRow("SELECT id FROM api_sources WHERE endpoint_id = ? AND source_name = ? ORDER BY id DESC LIMIT 1",
+					endpointID, source.sourceName).Scan(&apiSourceID)
+				if err == nil {
+					fallbacks := []string{
+						"https://kusonime.org",
+						"https://kusonime.net",
+					}
+					for i, fallbackURL := range fallbacks {
+						db.Exec(`INSERT INTO fallback_apis (api_source_id, fallback_url, priority, is_active) 
+							VALUES (?, ?, ?, ?)`, apiSourceID, fallbackURL, i+1, true)
+					}
+				}
+			}
+		}
 	}
 
 	return nil
@@ -491,6 +605,85 @@ func (db *DB) DeleteAPISource(id int) error {
 	return err
 }
 
+// DeleteAPISourceByName deletes all API sources with the given source name
+func (db *DB) DeleteAPISourceByName(sourceName string) error {
+	// Start transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// First, get all API source IDs with this name
+	rows, err := tx.Query(`SELECT id FROM api_sources WHERE source_name = ?`, sourceName)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var apiSourceIDs []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		apiSourceIDs = append(apiSourceIDs, id)
+	}
+
+	if len(apiSourceIDs) == 0 {
+		return fmt.Errorf("no API sources found with name: %s", sourceName)
+	}
+
+	// Delete related health checks
+	for _, id := range apiSourceIDs {
+		_, err = tx.Exec(`DELETE FROM health_checks WHERE api_source_id = ?`, id)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Delete all API sources with this name
+	_, err = tx.Exec(`DELETE FROM api_sources WHERE source_name = ?`, sourceName)
+	if err != nil {
+		return err
+	}
+
+	// Commit transaction
+	return tx.Commit()
+}
+
+// GetAPISourcesByName returns all API sources with the given source name
+func (db *DB) GetAPISourcesByName(sourceName string) ([]APISourceWithDetails, error) {
+	query := `
+		SELECT a.id, a.endpoint_id, a.source_name, a.base_url, a.priority, a.is_primary, a.is_active,
+		       e.path, c.name as category_name
+		FROM api_sources a
+		JOIN endpoints e ON a.endpoint_id = e.id
+		JOIN categories c ON e.category_id = c.id
+		WHERE a.source_name = ?
+		ORDER BY c.name, e.path, a.priority
+	`
+
+	rows, err := db.Query(query, sourceName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sources []APISourceWithDetails
+	for rows.Next() {
+		var src APISourceWithDetails
+		err := rows.Scan(&src.ID, &src.EndpointID, &src.SourceName, &src.BaseURL, &src.Priority,
+			&src.IsPrimary, &src.IsActive, &src.EndpointPath, &src.CategoryName)
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, src)
+	}
+
+	return sources, nil
+}
+
 // GetAllAPISources returns all API sources with category and endpoint info
 func (db *DB) GetAllAPISources() ([]APISourceWithDetails, error) {
 	query := `
@@ -651,9 +844,17 @@ func (db *DB) GetHealthStatusWithDetails() ([]map[string]interface{}, error) {
 			return nil, err
 		}
 
+		// Map status to consistent format
+		mappedStatus := status
+		if status == "OK" {
+			mappedStatus = "healthy"
+		} else if status == "ERROR" || status == "TIMEOUT" {
+			mappedStatus = "unhealthy"
+		}
+
 		result := map[string]interface{}{
 			"api_source_id": apiSourceID,
-			"status":        status,
+			"status":        mappedStatus,
 			"response_time": responseTime,
 			"error_message": errorMessage,
 			"checked_at":    checkedAt,

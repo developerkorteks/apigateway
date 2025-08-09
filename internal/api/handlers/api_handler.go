@@ -136,7 +136,9 @@ func (h *APIHandler) HandleAnimeDetail(c *gin.Context) {
 		return
 	}
 
-	ctx := h.buildDetailRequestContext(c, "/api/v1/anime-detail/", "anime")
+	// Use the actual request path to maintain consistency
+	requestPath := c.Request.URL.Path
+	ctx := h.buildDetailRequestContext(c, requestPath, "anime")
 	h.processDetailRequest(c, ctx)
 }
 
@@ -170,7 +172,9 @@ func (h *APIHandler) HandleEpisodeDetail(c *gin.Context) {
 		return
 	}
 
-	ctx := h.buildDetailRequestContext(c, "/api/v1/episode-detail/", "episode")
+	// Use the actual request path to maintain consistency
+	requestPath := c.Request.URL.Path
+	ctx := h.buildDetailRequestContext(c, requestPath, "episode")
 	h.processDetailRequest(c, ctx)
 }
 

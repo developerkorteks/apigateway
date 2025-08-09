@@ -102,7 +102,7 @@ func (h *APIHandler) GetAnimeTerbaru(c *gin.Context) {
 // GetMovies handles GET /api/v1/movie?page=<int>
 // @Summary Get movies
 // @Description Mengambil daftar film dengan pagination
-// @Tags Movies
+// @Tags Movie
 // @Accept json
 // @Produce json
 // @Param page query int false "Nomor halaman" default(1)

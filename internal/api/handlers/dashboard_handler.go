@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"apicategorywithfallback/internal/service"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -264,6 +265,40 @@ func (h *DashboardHandler) CreateAPISource(c *gin.Context) {
 	})
 }
 
+// CreateAPISourceForAllEndpoints creates a new API source for all endpoints in a category
+func (h *DashboardHandler) CreateAPISourceForAllEndpoints(c *gin.Context) {
+	var req struct {
+		CategoryName string `json:"category_name" binding:"required"`
+		SourceName   string `json:"source_name" binding:"required"`
+		BaseURL      string `json:"base_url" binding:"required"`
+		Priority     int    `json:"priority" binding:"required"`
+		IsPrimary    bool   `json:"is_primary"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request body",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	err := h.apiService.CreateAPISourceForAllEndpoints(req.CategoryName, req.SourceName, req.BaseURL, req.Priority, req.IsPrimary)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to create API source for all endpoints",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"status":  "success",
+		"message": fmt.Sprintf("API source '%s' created successfully for all endpoints in category '%s'", req.SourceName, req.CategoryName),
+		"data":    req,
+	})
+}
+
 // UpdateAPISource updates an existing API source
 func (h *DashboardHandler) UpdateAPISource(c *gin.Context) {
 	idStr := c.Param("id")
@@ -474,5 +509,84 @@ func (h *DashboardHandler) DeleteEndpoint(c *gin.Context) {
 		"data": gin.H{
 			"id": id,
 		},
+	})
+}
+
+// DeleteAPISourceByName deletes all API sources with the given source name
+func (h *DashboardHandler) DeleteAPISourceByName(c *gin.Context) {
+	var req struct {
+		SourceName string `json:"source_name" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request body",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// First, get all API sources with this name to show what will be deleted
+	sources, err := h.apiService.GetAPISourcesByName(req.SourceName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to get API sources",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if len(sources) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":   "No API sources found with the given name",
+			"details": fmt.Sprintf("Source name: %s", req.SourceName),
+		})
+		return
+	}
+
+	// Delete all API sources with this name
+	err = h.apiService.DeleteAPISourceByName(req.SourceName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to delete API sources",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": fmt.Sprintf("Successfully deleted %d API sources with name '%s'", len(sources), req.SourceName),
+		"data": gin.H{
+			"source_name":     req.SourceName,
+			"deleted_count":   len(sources),
+			"deleted_sources": sources,
+		},
+	})
+}
+
+// GetAPISourcesByName returns all API sources with the given source name
+func (h *DashboardHandler) GetAPISourcesByName(c *gin.Context) {
+	sourceName := c.Query("source_name")
+	if sourceName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "source_name query parameter is required",
+		})
+		return
+	}
+
+	sources, err := h.apiService.GetAPISourcesByName(sourceName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to get API sources",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   sources,
+		"count":  len(sources),
 	})
 }
