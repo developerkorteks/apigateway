@@ -21,7 +21,14 @@ func TestNewAPIService(t *testing.T) {
 	dbPath := "/tmp/test_api_service.db"
 	defer os.Remove(dbPath)
 
-	db, err := database.Init(dbPath)
+	cfg := &config.Config{
+		MultipleScrapeURL: "http://localhost:8081",
+		WinbuTVURL:        "http://localhost:8082",
+		SamehadakuURL:     "https://samehadaku.email",
+		OtakudesuURL:      "https://otakudesu.quest",
+		KusonimeURL:       "https://kusonime.com",
+	}
+	db, err := database.Init(dbPath, cfg)
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -82,7 +89,14 @@ func TestProcessRequestWithMockAPI(t *testing.T) {
 	dbPath := "/tmp/test_process_request.db"
 	defer os.Remove(dbPath)
 
-	db, err := database.Init(dbPath)
+	cfg := &config.Config{
+		MultipleScrapeURL: "http://localhost:8081",
+		WinbuTVURL:        "http://localhost:8082",
+		SamehadakuURL:     "https://samehadaku.email",
+		OtakudesuURL:      "https://otakudesu.quest",
+		KusonimeURL:       "https://kusonime.com",
+	}
+	db, err := database.Init(dbPath, cfg)
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -159,7 +173,14 @@ func TestProcessRequestWithCache(t *testing.T) {
 	dbPath := "/tmp/test_cache_request.db"
 	defer os.Remove(dbPath)
 
-	db, err := database.Init(dbPath)
+	cfg := &config.Config{
+		MultipleScrapeURL: "http://localhost:8081",
+		WinbuTVURL:        "http://localhost:8082",
+		SamehadakuURL:     "https://samehadaku.email",
+		OtakudesuURL:      "https://otakudesu.quest",
+		KusonimeURL:       "https://kusonime.com",
+	}
+	db, err := database.Init(dbPath, cfg)
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -244,7 +265,14 @@ func TestGetHealthStatus(t *testing.T) {
 	dbPath := "/tmp/test_health_status.db"
 	defer os.Remove(dbPath)
 
-	db, err := database.Init(dbPath)
+	cfg := &config.Config{
+		MultipleScrapeURL: "http://localhost:8081",
+		WinbuTVURL:        "http://localhost:8082",
+		SamehadakuURL:     "https://samehadaku.email",
+		OtakudesuURL:      "https://otakudesu.quest",
+		KusonimeURL:       "https://kusonime.com",
+	}
+	db, err := database.Init(dbPath, cfg)
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -275,7 +303,14 @@ func TestGetRequestLogs(t *testing.T) {
 	dbPath := "/tmp/test_request_logs.db"
 	defer os.Remove(dbPath)
 
-	db, err := database.Init(dbPath)
+	cfg := &config.Config{
+		MultipleScrapeURL: "http://localhost:8081",
+		WinbuTVURL:        "http://localhost:8082",
+		SamehadakuURL:     "https://samehadaku.email",
+		OtakudesuURL:      "https://otakudesu.quest",
+		KusonimeURL:       "https://kusonime.com",
+	}
+	db, err := database.Init(dbPath, cfg)
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -319,7 +354,14 @@ func TestGetCategories(t *testing.T) {
 	dbPath := "/tmp/test_categories.db"
 	defer os.Remove(dbPath)
 
-	db, err := database.Init(dbPath)
+	cfg := &config.Config{
+		MultipleScrapeURL: "http://localhost:8081",
+		WinbuTVURL:        "http://localhost:8082",
+		SamehadakuURL:     "https://samehadaku.email",
+		OtakudesuURL:      "https://otakudesu.quest",
+		KusonimeURL:       "https://kusonime.com",
+	}
+	db, err := database.Init(dbPath, cfg)
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}

@@ -96,7 +96,7 @@ func (h *APIHandler) HandleAnimeTerbaru(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param page query int false "Page number for pagination" default(1)
-// @Param category query string false "Content category for API routing (anime, korean-drama, all). Internal routing parameter" default(anime) Enums(anime, korean-drama, all)
+// @Param category query string false "Content category for API routing - dynamically loaded from database" default(anime)
 // @Success 200 {object} map[string]interface{} "Aggregated anime movie list from multiple sources"
 // @Failure 400 {object} map[string]interface{} "Bad request - invalid parameters"
 // @Failure 500 {object} map[string]interface{} "Internal server error - all API sources failed"
@@ -151,7 +151,7 @@ func (h *APIHandler) HandleAnimeDetail(c *gin.Context) {
 // @Param id query string false "Episode ID (alternative to episode_url/episode_slug)"
 // @Param episode_url query string false "Episode URL (alternative to id/episode_slug)"
 // @Param episode_slug query string false "Episode slug (alternative to id/episode_url)"
-// @Param category query string false "Content category for API routing (anime, korean-drama, all). Internal routing parameter" default(anime) Enums(anime, korean-drama, all)
+// @Param category query string false "Content category for API routing - dynamically loaded from database" default(anime)
 // @Success 200 {object} map[string]interface{} "Aggregated episode details from available sources"
 // @Failure 400 {object} map[string]interface{} "Bad request - missing required episode identifier"
 // @Failure 404 {object} map[string]interface{} "Not found - episode not found in any source"
@@ -186,7 +186,7 @@ func (h *APIHandler) HandleEpisodeDetail(c *gin.Context) {
 // @Produce json
 // @Param q query string true "Search query string - title, genre, or keyword to search for"
 // @Param page query int false "Page number for pagination" default(1)
-// @Param category query string false "Content category for API routing (anime, korean-drama, all). Internal routing parameter" default(anime) Enums(anime, korean-drama, all)
+// @Param category query string false "Content category for API routing - dynamically loaded from database" default(anime)
 // @Success 200 {object} map[string]interface{} "Aggregated search results from multiple sources with metadata"
 // @Failure 400 {object} map[string]interface{} "Bad request - missing or empty search query"
 // @Failure 404 {object} map[string]interface{} "Not found - no results found in any source"

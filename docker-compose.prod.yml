@@ -18,6 +18,12 @@ services:
       - RATE_LIMIT_WINDOW=1m
       - HEALTH_CHECK_INTERVAL=5m
       - LOG_LEVEL=info
+      # API Sources Configuration
+      - MULTIPLESCRAPE_URL=http://multiplescrape:8081
+      - WINBUTV_URL=http://winbutv:8082
+      - SAMEHADAKU_URL=https://samehadaku.email
+      - OTAKUDESU_URL=https://otakudesu.quest
+      - KUSONIME_URL=https://kusonime.com
     volumes:
       - apifallback_data:/app/data
     depends_on:

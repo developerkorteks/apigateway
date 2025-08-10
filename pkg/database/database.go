@@ -1,11 +1,11 @@
-//go:build !cgo
-// +build !cgo
-
 package database
 
 import (
+	"apicategorywithfallback/pkg/config"
 	"database/sql"
 	"fmt"
+	"sort"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -14,7 +14,7 @@ type DB struct {
 	*sql.DB
 }
 
-func Init(dbPath string) (*DB, error) {
+func Init(dbPath string, cfg *config.Config) (*DB, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func Init(dbPath string) (*DB, error) {
 	}
 
 	// Insert default data if tables are empty
-	if err := dbWrapper.insertDefaultData(); err != nil {
+	if err := dbWrapper.insertDefaultData(cfg); err != nil {
 		return nil, err
 	}
 
@@ -108,7 +108,7 @@ func (db *DB) createTables() error {
 	return nil
 }
 
-func (db *DB) insertDefaultData() error {
+func (db *DB) insertDefaultData(cfg *config.Config) error {
 	// Check if categories table is empty
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM categories").Scan(&count)
@@ -151,46 +151,8 @@ func (db *DB) insertDefaultData() error {
 		}
 	}
 
-	// Insert default API sources for all endpoints
-	apiSources := map[string][]struct {
-		sourceName string
-		baseURL    string
-		priority   int
-	}{
-		"/api/v1/home": {
-			{"multiplescrape", "http://localhost:8081", 1},
-			{"winbutv", "http://localhost:8082", 2},
-		},
-		"/api/v1/jadwal-rilis": {
-			{"multiplescrape", "http://localhost:8081", 1},
-			{"winbutv", "http://localhost:8082", 2},
-		},
-		"/api/v1/anime-terbaru": {
-			{"multiplescrape", "http://localhost:8081", 1},
-			{"winbutv", "http://localhost:8082", 2},
-		},
-		"/api/v1/movie": {
-			{"multiplescrape", "http://localhost:8081", 1},
-			{"winbutv", "http://localhost:8082", 2},
-		},
-		"/api/v1/anime-detail": {
-			{"winbutv", "http://localhost:8082", 1},        // Primary scraper
-			{"multiplescrape", "http://localhost:8081", 2}, // Secondary
-			{"samehadaku", "https://samehadaku.email", 3},  // External scraper
-			{"otakudesu", "https://otakudesu.quest", 4},    // External scraper
-			{"kusonime", "https://kusonime.com", 5},        // External scraper
-		},
-		"/api/v1/episode-detail": {
-			{"winbutv", "http://localhost:8082", 1},
-			{"multiplescrape", "http://localhost:8081", 2},
-			{"samehadaku", "https://samehadaku.email", 3},
-			{"otakudesu", "https://otakudesu.quest", 4},
-		},
-		"/api/v1/search": {
-			{"multiplescrape", "http://localhost:8081", 1},
-			{"winbutv", "http://localhost:8082", 2},
-		},
-	}
+	// Build API sources dynamically from configuration
+	apiSources := buildDynamicAPISources(cfg)
 
 	// Get endpoint IDs first
 	endpointMap := make(map[string]int)
@@ -402,6 +364,30 @@ func (db *DB) GetCategories() ([]Category, error) {
 	return categories, nil
 }
 
+// GetCategoryNames returns all category names for dynamic Swagger documentation
+func (db *DB) GetCategoryNames() ([]string, error) {
+	rows, err := db.Query("SELECT name FROM categories WHERE is_active = TRUE ORDER BY name")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var categoryNames []string
+	for rows.Next() {
+		var name string
+		err := rows.Scan(&name)
+		if err != nil {
+			return nil, err
+		}
+		categoryNames = append(categoryNames, name)
+	}
+
+	// Always include "all" as an option for aggregated results
+	categoryNames = append(categoryNames, "all")
+
+	return categoryNames, nil
+}
+
 // GetEndpointsByCategory returns all endpoints for a category
 func (db *DB) GetEndpointsByCategory(categoryName string) ([]Endpoint, error) {
 	query := `
@@ -433,6 +419,7 @@ func (db *DB) GetEndpointsByCategory(categoryName string) ([]Endpoint, error) {
 
 // GetAPISourcesByEndpoint returns all API sources for an endpoint
 func (db *DB) GetAPISourcesByEndpoint(endpointPath, categoryName string) ([]APISource, error) {
+	// First try exact match
 	query := `
 		SELECT a.id, a.endpoint_id, a.source_name, a.base_url, a.priority, a.is_primary, a.is_active
 		FROM api_sources a
@@ -458,7 +445,70 @@ func (db *DB) GetAPISourcesByEndpoint(endpointPath, categoryName string) ([]APIS
 		sources = append(sources, src)
 	}
 
+	// If exact match found, return it
+	if len(sources) > 0 {
+		return sources, nil
+	}
+
+	// If no exact match, try to find parameterized route match
+	// For example: /api/v1/jadwal-rilis/monday should match /api/v1/jadwal-rilis
+	baseEndpoint := db.extractBaseEndpoint(endpointPath)
+	if baseEndpoint != endpointPath {
+		// Try again with base endpoint
+		rows, err := db.Query(query, baseEndpoint, categoryName)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var src APISource
+			err := rows.Scan(&src.ID, &src.EndpointID, &src.SourceName, &src.BaseURL, &src.Priority, &src.IsPrimary, &src.IsActive)
+			if err != nil {
+				return nil, err
+			}
+			sources = append(sources, src)
+		}
+	}
+
 	return sources, nil
+}
+
+// extractBaseEndpoint extracts the base endpoint from a parameterized path
+func (db *DB) extractBaseEndpoint(endpointPath string) string {
+	// Handle common parameterized patterns
+	patterns := map[string]string{
+		"/api/v1/jadwal-rilis/":   "/api/v1/jadwal-rilis",
+		"/api/v1/anime-detail/":   "/api/v1/anime-detail",
+		"/api/v1/episode-detail/": "/api/v1/episode-detail",
+	}
+
+	// Check if the path starts with any known parameterized pattern
+	for pattern, base := range patterns {
+		if strings.HasPrefix(endpointPath, pattern) {
+			return base
+		}
+	}
+
+	// For paths like /api/v1/jadwal-rilis/monday, extract /api/v1/jadwal-rilis
+	parts := strings.Split(endpointPath, "/")
+	if len(parts) >= 4 {
+		// Check if this looks like a parameterized route
+		basePath := strings.Join(parts[:4], "/") // /api/v1/jadwal-rilis
+		knownEndpoints := []string{
+			"/api/v1/jadwal-rilis",
+			"/api/v1/anime-detail",
+			"/api/v1/episode-detail",
+		}
+
+		for _, known := range knownEndpoints {
+			if basePath == known {
+				return basePath
+			}
+		}
+	}
+
+	return endpointPath
 }
 
 // GetFallbackAPIs returns all fallback APIs for an API source
@@ -939,4 +989,104 @@ func (db *DB) DeleteEndpoint(id int) error {
 	query := `DELETE FROM endpoints WHERE id = ?`
 	_, err := db.Exec(query, id)
 	return err
+}
+
+// buildDynamicAPISources creates API source configuration dynamically
+// This allows unlimited sources to be configured without code changes
+func buildDynamicAPISources(cfg *config.Config) map[string][]struct {
+	sourceName string
+	baseURL    string
+	priority   int
+} {
+	// Define all endpoints that need API sources
+	endpoints := []string{
+		"/api/v1/home",
+		"/api/v1/jadwal-rilis",
+		"/api/v1/anime-terbaru",
+		"/api/v1/movie",
+		"/api/v1/anime-detail",
+		"/api/v1/episode-detail",
+		"/api/v1/search",
+	}
+
+	// Create the result map
+	result := make(map[string][]struct {
+		sourceName string
+		baseURL    string
+		priority   int
+	})
+
+	// Convert API sources to sorted slice for consistent priority assignment
+	type sourceInfo struct {
+		name string
+		url  string
+	}
+
+	var sources []sourceInfo
+	for name, url := range cfg.APISources {
+		if url != "" { // Only include non-empty URLs
+			sources = append(sources, sourceInfo{name: name, url: url})
+		}
+	}
+
+	// Sort sources by name for consistent priority assignment
+	sort.Slice(sources, func(i, j int) bool {
+		return sources[i].name < sources[j].name
+	})
+
+	// Assign sources to each endpoint with appropriate priorities
+	for _, endpoint := range endpoints {
+		var endpointSources []struct {
+			sourceName string
+			baseURL    string
+			priority   int
+		}
+
+		// Assign priorities based on source characteristics
+		for i, source := range sources {
+			priority := i + 1 // Base priority
+
+			// Adjust priority based on source type and endpoint
+			switch endpoint {
+			case "/api/v1/anime-detail", "/api/v1/episode-detail":
+				// For detail endpoints, prioritize sources known for detailed data
+				if source.name == "winbutv" || source.name == "gomunime" {
+					priority = 1
+				} else if source.name == "multiplescrape" {
+					priority = 2
+				}
+			case "/api/v1/home", "/api/v1/anime-terbaru", "/api/v1/movie":
+				// For list endpoints, prioritize aggregation sources
+				if source.name == "multiplescrape" || source.name == "gomunime" {
+					priority = 1
+				} else if source.name == "winbutv" {
+					priority = 2
+				}
+			case "/api/v1/search":
+				// For search, prioritize sources with good search capabilities
+				if source.name == "multiplescrape" || source.name == "samehadaku" {
+					priority = 1
+				}
+			}
+
+			endpointSources = append(endpointSources, struct {
+				sourceName string
+				baseURL    string
+				priority   int
+			}{
+				sourceName: source.name,
+				baseURL:    source.url,
+				priority:   priority,
+			})
+		}
+
+		// Sort by priority
+		sort.Slice(endpointSources, func(i, j int) bool {
+			return endpointSources[i].priority < endpointSources[j].priority
+		})
+
+		result[endpoint] = endpointSources
+	}
+
+	return result
 }

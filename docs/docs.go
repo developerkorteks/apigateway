@@ -24,6 +24,37 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/categories/names": {
+            "get": {
+                "description": "Returns list of all active category names for dynamic API documentation",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Get available category names",
+                "responses": {
+                    "200": {
+                        "description": "List of available category names",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/anime-detail": {
             "get": {
                 "description": "Retrieve detailed information about a specific anime from all available APIs. Requires anime identifier (id, slug, or anime_slug). Uses fallback mechanism when primary APIs fail.",
@@ -193,14 +224,9 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "enum": [
-                            "anime",
-                            "korean-drama",
-                            "all"
-                        ],
                         "type": "string",
                         "default": "anime",
-                        "description": "Content category for API routing (anime, korean-drama, all). Internal routing parameter",
+                        "description": "Content category for API routing - dynamically loaded from database",
                         "name": "category",
                         "in": "query"
                     }
@@ -422,14 +448,9 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "enum": [
-                            "anime",
-                            "korean-drama",
-                            "all"
-                        ],
                         "type": "string",
                         "default": "anime",
-                        "description": "Content category for API routing (anime, korean-drama, all). Internal routing parameter",
+                        "description": "Content category for API routing - dynamically loaded from database",
                         "name": "category",
                         "in": "query"
                     }
@@ -488,14 +509,9 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "enum": [
-                            "anime",
-                            "korean-drama",
-                            "all"
-                        ],
                         "type": "string",
                         "default": "anime",
-                        "description": "Content category for API routing (anime, korean-drama, all). Internal routing parameter",
+                        "description": "Content category for API routing - dynamically loaded from database",
                         "name": "category",
                         "in": "query"
                     }

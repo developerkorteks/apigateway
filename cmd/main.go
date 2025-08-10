@@ -53,7 +53,7 @@ func main() {
 	cfg := config.Load()
 
 	// Initialize database
-	db, err := database.Init(cfg.DatabasePath)
+	db, err := database.Init(cfg.DatabasePath, cfg)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
@@ -74,8 +74,11 @@ func main() {
 	// Setup API routes
 	api.SetupRoutes(router, apiService)
 
-	// Setup Swagger
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Setup Swagger with dynamic category support
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.DeepLinking(true)))
+
+	// Serve dynamic swagger JavaScript
+	router.Static("/swagger-assets", "./web/static")
 
 	// Create HTTP server
 	srv := &http.Server{

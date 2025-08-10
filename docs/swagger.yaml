@@ -13,6 +13,27 @@ info:
   title: API Fallback Service
   version: "1.0"
 paths:
+  /api/categories/names:
+    get:
+      consumes:
+      - application/json
+      description: Returns list of all active category names for dynamic API documentation
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of available category names
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get available category names
+      tags:
+      - System
   /api/v1/anime-detail:
     get:
       consumes:
@@ -133,12 +154,7 @@ paths:
         name: episode_slug
         type: string
       - default: anime
-        description: Content category for API routing (anime, korean-drama, all).
-          Internal routing parameter
-        enum:
-        - anime
-        - korean-drama
-        - all
+        description: Content category for API routing - dynamically loaded from database
         in: query
         name: category
         type: string
@@ -302,12 +318,7 @@ paths:
         name: page
         type: integer
       - default: anime
-        description: Content category for API routing (anime, korean-drama, all).
-          Internal routing parameter
-        enum:
-        - anime
-        - korean-drama
-        - all
+        description: Content category for API routing - dynamically loaded from database
         in: query
         name: category
         type: string
@@ -350,12 +361,7 @@ paths:
         name: page
         type: integer
       - default: anime
-        description: Content category for API routing (anime, korean-drama, all).
-          Internal routing parameter
-        enum:
-        - anime
-        - korean-drama
-        - all
+        description: Content category for API routing - dynamically loaded from database
         in: query
         name: category
         type: string

@@ -26,6 +26,13 @@ func (h *DashboardHandler) ShowDashboard(c *gin.Context) {
 	})
 }
 
+// ShowEnhancedDashboard renders the enhanced dashboard page
+func (h *DashboardHandler) ShowEnhancedDashboard(c *gin.Context) {
+	c.HTML(http.StatusOK, "dashboard_improved.html", gin.H{
+		"title": "API Fallback System",
+	})
+}
+
 // ShowManagement renders the management dashboard page
 func (h *DashboardHandler) ShowManagement(c *gin.Context) {
 	c.HTML(http.StatusOK, "dashboard_management.html", gin.H{
@@ -104,6 +111,31 @@ func (h *DashboardHandler) GetCategories(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   categories,
+	})
+}
+
+// GetCategoryNames returns category names for dynamic Swagger documentation
+// @Summary Get available category names
+// @Description Returns list of all active category names for dynamic API documentation
+// @Tags System
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "List of available category names"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /api/categories/names [get]
+func (h *DashboardHandler) GetCategoryNames(c *gin.Context) {
+	categoryNames, err := h.apiService.GetCategoryNames()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to get category names",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   categoryNames,
 	})
 }
 

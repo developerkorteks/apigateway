@@ -23,11 +23,6 @@ func setupTestHandler() (*APIHandler, func()) {
 	// Create temporary database
 	dbPath := "/tmp/test_handler.db"
 
-	db, err := database.Init(dbPath)
-	if err != nil {
-		panic(err)
-	}
-
 	cfg := &config.Config{
 		APITimeout:     10 * time.Second,
 		MaxConcurrency: 5,
@@ -35,6 +30,17 @@ func setupTestHandler() (*APIHandler, func()) {
 		CacheTTL: map[string]time.Duration{
 			"/api/v1/home": 15 * time.Minute,
 		},
+		// Test API Sources
+		MultipleScrapeURL: "http://localhost:8081",
+		WinbuTVURL:        "http://localhost:8082",
+		SamehadakuURL:     "https://samehadaku.email",
+		OtakudesuURL:      "https://otakudesu.quest",
+		KusonimeURL:       "https://kusonime.com",
+	}
+
+	db, err := database.Init(dbPath, cfg)
+	if err != nil {
+		panic(err)
 	}
 
 	apiService := service.NewAPIService(db, cfg)

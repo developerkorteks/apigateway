@@ -30,9 +30,21 @@ func NewAPIService(db *database.DB, cfg *config.Config) *APIService {
 	// Initialize cache
 	cacheInstance := cache.NewCache(cfg.RedisAddr, cfg.RedisDB)
 
-	// Initialize HTTP client with timeout
+	// Initialize HTTP client with timeout and redirect handling
 	httpClient := &http.Client{
 		Timeout: cfg.APITimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Allow up to 10 redirects
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			// Preserve headers on redirect
+			if len(via) > 0 {
+				req.Header.Set("User-Agent", "APIFallback/1.0")
+				req.Header.Set("Accept", "application/json")
+			}
+			return nil
+		},
 	}
 
 	// Initialize rate limiter
@@ -421,9 +433,10 @@ func (s *APIService) aggregateHomeData(result map[string]interface{}, responses 
 	result["jadwal_rilis"] = allSchedules
 }
 
-// aggregateListData combines list data from multiple sources
+// aggregateListData combines list data from multiple sources with deduplication
 func (s *APIService) aggregateListData(result map[string]interface{}, responses []*domain.APIResponse, dataKey string) {
 	var allData []interface{}
+	seenItems := make(map[string]bool) // For deduplication based on unique identifiers
 
 	for _, resp := range responses {
 		var data map[string]interface{}
@@ -434,11 +447,41 @@ func (s *APIService) aggregateListData(result map[string]interface{}, responses 
 
 		if listData, exists := data[dataKey]; exists {
 			if list, ok := listData.([]interface{}); ok {
-				allData = append(allData, list...)
+				for _, item := range list {
+					if itemMap, ok := item.(map[string]interface{}); ok {
+						// Create unique key based on available identifiers
+						var uniqueKey string
+						if slug, exists := itemMap["anime_slug"]; exists {
+							uniqueKey = fmt.Sprintf("%v", slug)
+						} else if judul, exists := itemMap["judul"]; exists {
+							uniqueKey = fmt.Sprintf("%v", judul)
+						} else if url, exists := itemMap["url"]; exists {
+							uniqueKey = fmt.Sprintf("%v", url)
+						} else {
+							// Fallback: use JSON representation as key
+							if jsonBytes, err := json.Marshal(item); err == nil {
+								uniqueKey = string(jsonBytes)
+							}
+						}
+
+						// Only add if not seen before
+						if uniqueKey != "" && !seenItems[uniqueKey] {
+							seenItems[uniqueKey] = true
+							allData = append(allData, item)
+							logger.Debugf("Added unique item from %s: %s", resp.SourceName, uniqueKey)
+						} else if uniqueKey != "" {
+							logger.Debugf("Skipped duplicate item from %s: %s", resp.SourceName, uniqueKey)
+						}
+					} else {
+						// If item is not a map, add it directly (no deduplication possible)
+						allData = append(allData, item)
+					}
+				}
 			}
 		}
 	}
 
+	logger.Infof("Aggregated %d unique items from %d sources", len(allData), len(responses))
 	result[dataKey] = allData
 }
 
@@ -467,14 +510,24 @@ func (s *APIService) aggregateScheduleData(result map[string]interface{}, respon
 	result["data"] = scheduleMap
 }
 
-// makeAPIRequest makes an HTTP request to an API
+// makeAPIRequest makes an HTTP request to an API with robust error handling
 func (s *APIService) makeAPIRequest(url, sourceName string, isFallback bool) *domain.APIResponse {
 	startTime := time.Now()
+
+	// Validate URL
+	if url == "" {
+		return &domain.APIResponse{
+			Error:        fmt.Errorf("empty URL provided"),
+			SourceName:   sourceName,
+			IsFallback:   isFallback,
+			ResponseTime: time.Since(startTime),
+		}
+	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return &domain.APIResponse{
-			Error:        err,
+			Error:        fmt.Errorf("failed to create request: %w", err),
 			SourceName:   sourceName,
 			IsFallback:   isFallback,
 			ResponseTime: time.Since(startTime),
@@ -484,22 +537,49 @@ func (s *APIService) makeAPIRequest(url, sourceName string, isFallback bool) *do
 	// Set headers
 	req.Header.Set("User-Agent", "APIFallback/1.0")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Cache-Control", "no-cache")
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return &domain.APIResponse{
-			Error:        err,
+			Error:        fmt.Errorf("request failed: %w", err),
 			SourceName:   sourceName,
 			IsFallback:   isFallback,
 			ResponseTime: time.Since(startTime),
 		}
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+	}()
+
+	// Check for HTTP errors
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		return &domain.APIResponse{
+			Error:        fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status),
+			StatusCode:   resp.StatusCode,
+			SourceName:   sourceName,
+			IsFallback:   isFallback,
+			ResponseTime: time.Since(startTime),
+		}
+	}
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return &domain.APIResponse{
-			Error:        err,
+			Error:        fmt.Errorf("failed to read response body: %w", err),
+			StatusCode:   resp.StatusCode,
+			SourceName:   sourceName,
+			IsFallback:   isFallback,
+			ResponseTime: time.Since(startTime),
+		}
+	}
+
+	// Validate response data
+	if len(data) == 0 {
+		return &domain.APIResponse{
+			Error:        fmt.Errorf("empty response body"),
 			StatusCode:   resp.StatusCode,
 			SourceName:   sourceName,
 			IsFallback:   isFallback,
@@ -526,23 +606,39 @@ func (s *APIService) buildURL(baseURL, endpoint string, params map[string]string
 		"aggregate": true, // Internal parameter for aggregation mode
 	}
 
+	// Parameter name mapping for different endpoints
+	paramMapping := map[string]map[string]string{
+		"/api/v1/search": {
+			"q": "query", // Map 'q' parameter to 'query' for search endpoints
+		},
+	}
+
 	// Build query string only with external parameters
 	queryParams := make(map[string]string)
 	for key, value := range params {
 		if !internalParams[key] {
-			queryParams[key] = value
+			// Check if parameter name needs mapping
+			mappedKey := key
+			if endpointMapping, exists := paramMapping[endpoint]; exists {
+				if newKey, needsMapping := endpointMapping[key]; needsMapping {
+					mappedKey = newKey
+				}
+			}
+			queryParams[mappedKey] = value
 		}
 	}
 
-	// Special handling for samehadaku API - add required parameters
-	if strings.Contains(baseURL, "localhost:8000") && endpoint == "/api/v1/search" {
+	// Special handling for different APIs
+	if endpoint == "/api/v1/search" {
 		// Ensure trailing slash for samehadaku search endpoint
-		if !strings.HasSuffix(url, "/") {
-			url += "/"
-		}
-		// Add force_refresh parameter if not present
-		if _, exists := queryParams["force_refresh"]; !exists {
-			queryParams["force_refresh"] = "false"
+		if strings.Contains(baseURL, "samehadaku") {
+			if !strings.HasSuffix(url, "/") {
+				url += "/"
+			}
+			// Add force_refresh parameter if not present
+			if _, exists := queryParams["force_refresh"]; !exists {
+				queryParams["force_refresh"] = "false"
+			}
 		}
 	}
 
@@ -656,7 +752,7 @@ func (s *APIService) checkAPIHealth(source database.APISource, endpoint string) 
 	}
 
 	// Special handling for samehadaku search endpoint
-	if strings.Contains(source.BaseURL, "localhost:8000") && endpoint == "/api/v1/search" {
+	if strings.Contains(source.BaseURL, "samehadaku") && endpoint == "/api/v1/search" {
 		if !strings.HasSuffix(url, "/") {
 			url += "/"
 		}
@@ -850,6 +946,11 @@ func (s *APIService) GetAPISourcesByName(sourceName string) ([]database.APISourc
 // GetCategories returns all categories
 func (s *APIService) GetCategories() ([]database.Category, error) {
 	return s.db.GetCategories()
+}
+
+// GetCategoryNames returns all category names for dynamic Swagger documentation
+func (s *APIService) GetCategoryNames() ([]string, error) {
+	return s.db.GetCategoryNames()
 }
 
 // GetAllEndpoints returns all endpoints with details
@@ -1048,12 +1149,15 @@ func (s *APIService) trySourceWithFallback(source database.APISource, ctx *domai
 	// Special debug for winbutv
 	if source.SourceName == "winbutv" {
 		logger.Infof("WINBUTV DEBUG: Error=%v, DataLen=%d, StatusCode=%d", resp.Error, len(resp.Data), resp.StatusCode)
-		if resp.Data != nil {
+		if resp.Data != nil && len(resp.Data) > 0 {
 			maxLen := 200
 			if len(resp.Data) < maxLen {
 				maxLen = len(resp.Data)
 			}
-			logger.Infof("WINBUTV DEBUG: First %d chars of response: %s", maxLen, string(resp.Data[:maxLen]))
+			// Safe slice operation
+			if maxLen > 0 {
+				logger.Infof("WINBUTV DEBUG: First %d chars of response: %s", maxLen, string(resp.Data[:maxLen]))
+			}
 		}
 	}
 
@@ -1323,13 +1427,30 @@ func (s *APIService) aggregateResponsesFromAllCategories(responses []*domain.API
 	aggregatedJSON, err := json.Marshal(aggregatedData)
 	if err != nil {
 		logger.Errorf("Failed to marshal aggregated data: %v", err)
-		return responses[0] // fallback to first response
+		// Safe fallback - check if responses slice is not empty
+		if len(responses) > 0 {
+			return responses[0]
+		}
+		// Return error response if no responses available
+		return &domain.APIResponse{
+			Error:        fmt.Errorf("failed to marshal aggregated data: %w", err),
+			StatusCode:   500,
+			ResponseTime: 0,
+			SourceName:   "aggregated_all_categories",
+			IsFallback:   false,
+		}
+	}
+
+	// Safe access to response time
+	var responseTime time.Duration
+	if len(responses) > 0 {
+		responseTime = responses[0].ResponseTime
 	}
 
 	return &domain.APIResponse{
 		Data:         aggregatedJSON,
 		StatusCode:   200,
-		ResponseTime: responses[0].ResponseTime,
+		ResponseTime: responseTime,
 		SourceName:   "aggregated_all_categories",
 		IsFallback:   false,
 	}

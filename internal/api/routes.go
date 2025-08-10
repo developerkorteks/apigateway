@@ -25,26 +25,34 @@ func SetupRoutes(router *gin.Engine, apiService *service.APIService) {
 	// Initialize handlers
 	apiHandler := handlers.NewAPIHandler(apiService)
 	dashboardHandler := handlers.NewDashboardHandler(apiService)
+	swaggerHandler := handlers.NewSwaggerHandler(apiService)
 
 	// API routes
 	v1 := router.Group("/api/v1")
 	{
+		// Handle both with and without trailing slashes
 		v1.GET("/home", apiHandler.HandleHome)
+		v1.GET("/home/", apiHandler.HandleHome)
 		v1.GET("/jadwal-rilis", apiHandler.HandleJadwalRilis)
+		v1.GET("/jadwal-rilis/", apiHandler.HandleJadwalRilis)
 		v1.GET("/jadwal-rilis/:day", apiHandler.HandleJadwalRilisDay)
 		v1.GET("/anime-terbaru", apiHandler.HandleAnimeTerbaru)
+		v1.GET("/anime-terbaru/", apiHandler.HandleAnimeTerbaru)
 		v1.GET("/movie", apiHandler.HandleMovie)
+		v1.GET("/movie/", apiHandler.HandleMovie)
 		v1.GET("/anime-detail", apiHandler.HandleAnimeDetail)
 		v1.GET("/anime-detail/", apiHandler.HandleAnimeDetail)
 		v1.GET("/episode-detail", apiHandler.HandleEpisodeDetail)
 		v1.GET("/episode-detail/", apiHandler.HandleEpisodeDetail)
 		v1.GET("/search", apiHandler.HandleSearch)
+		v1.GET("/search/", apiHandler.HandleSearch)
 	}
 
 	// Dashboard routes
 	dashboard := router.Group("/dashboard")
 	{
 		dashboard.GET("/", dashboardHandler.ShowDashboard)
+		dashboard.GET("/enhanced", dashboardHandler.ShowEnhancedDashboard)
 		dashboard.GET("/management", dashboardHandler.ShowManagement)
 		dashboard.GET("/health", dashboardHandler.GetHealthStatus)
 		dashboard.POST("/health/check", dashboardHandler.RunManualHealthCheck)
@@ -74,6 +82,16 @@ func SetupRoutes(router *gin.Engine, apiService *service.APIService) {
 		dashboard.GET("/api-sources/by-name", dashboardHandler.GetAPISourcesByName)
 		dashboard.DELETE("/api-sources/by-name", dashboardHandler.DeleteAPISourceByName)
 	}
+
+	// Public API routes for system information
+	api := router.Group("/api")
+	{
+		api.GET("/categories/names", dashboardHandler.GetCategoryNames)
+	}
+
+	// Custom Swagger UI with dynamic categories
+	router.GET("/swagger-ui", swaggerHandler.ServeSwaggerUI)
+	router.GET("/swagger-ui/", swaggerHandler.ServeSwaggerUI)
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {

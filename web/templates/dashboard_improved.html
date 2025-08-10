@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - Enhanced Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#0f172a',
+                        'dark-surface': '#1e293b',
+                        'dark-card': '#334155',
+                        'success': '#10b981',
+                        'warning': '#f59e0b',
+                        'error': '#ef4444',
+                        'info': '#3b82f6',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @keyframes pulse-success {
+            0%, 100% { opacity: 1; box-shadow: 0 0 5px #10b981; }
+            50% { opacity: 0.7; box-shadow: 0 0 15px #10b981; }
+        }
+        @keyframes pulse-error {
+            0%, 100% { opacity: 1; box-shadow: 0 0 5px #ef4444; }
+            50% { opacity: 0.7; box-shadow: 0 0 15px #ef4444; }
+        }
+        @keyframes pulse-warning {
+            0%, 100% { opacity: 1; box-shadow: 0 0 5px #f59e0b; }
+            50% { opacity: 0.7; box-shadow: 0 0 15px #f59e0b; }
+        }
+        .pulse-success { animation: pulse-success 2s infinite; }
+        .pulse-error { animation: pulse-error 2s infinite; }
+        .pulse-warning { animation: pulse-warning 2s infinite; }
+        
+        .status-badge {
+            @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+        }
+        .status-success { @apply bg-success/20 text-success border border-success/30; }
+        .status-error { @apply bg-error/20 text-error border border-error/30; }
+        .status-warning { @apply bg-warning/20 text-warning border border-warning/30; }
+        .status-info { @apply bg-info/20 text-info border border-info/30; }
+        
+        .card-gradient {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        }
+        
+        .metric-card {
+            @apply bg-dark-surface border border-slate-600/50 rounded-xl p-6 transition-all duration-300;
+        }
+        .metric-card:hover {
+            @apply border-slate-500 shadow-lg transform -translate-y-1;
+        }
+        
+        .alert-success {
+            @apply bg-success/10 border border-success/30 text-success p-4 rounded-lg;
+        }
+        .alert-error {
+            @apply bg-error/10 border border-error/30 text-error p-4 rounded-lg;
+        }
+        .alert-warning {
+            @apply bg-warning/10 border border-warning/30 text-warning p-4 rounded-lg;
+        }
+        .alert-info {
+            @apply bg-info/10 border border-info/30 text-info p-4 rounded-lg;
+        }
+    </style>
+</head>
+<body class="bg-dark-bg text-white min-h-screen">
+    <!-- Enhanced Header -->
+    <header class="bg-dark-surface border-b border-slate-600/50 shadow-xl">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand with System Status -->
+                <div class="flex items-center space-x-6">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-info to-success rounded-lg flex items-center justify-center">
+                            <i class="fas fa-rocket text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold bg-gradient-to-r from-info to-success bg-clip-text text-transparent">
+                                API Fallback System
+                            </h1>
+                            <span class="text-xs text-slate-400">Enhanced Dashboard v2.0</span>
+                        </div>
+                    </div>
+                    
+                    <!-- System Status Indicator -->
+                    <div id="system-status-indicator" class="flex items-center space-x-2">
+                        <div class="status-badge status-info">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                            <span>Checking System...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation & Actions -->
+                <div class="flex items-center space-x-4">
+                    <div class="hidden md:flex items-center space-x-3">
+                        <a href="/dashboard/" class="px-4 py-2 bg-info/20 text-info rounded-lg font-medium hover:bg-info/30 transition-all">
+                            <i class="fas fa-chart-line mr-2"></i>Dashboard
+                        </a>
+                        <a href="/dashboard/management" class="px-4 py-2 text-slate-300 hover:bg-dark-card rounded-lg font-medium transition-all">
+                            <i class="fas fa-cogs mr-2"></i>Management
+                        </a>
+                        <a href="/swagger-ui" target="_blank" class="px-4 py-2 text-slate-300 hover:bg-dark-card rounded-lg font-medium transition-all">
+                            <i class="fas fa-book mr-2"></i>API Docs
+                        </a>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="flex items-center space-x-2">
+                        <button id="refresh-all" onclick="refreshAllData()" 
+                                class="p-2 text-slate-300 hover:text-white hover:bg-dark-card rounded-lg transition-all" 
+                                title="Refresh All Data">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button id="health-check-btn" onclick="runQuickHealthCheck()" 
+                                class="p-2 text-slate-300 hover:text-white hover:bg-dark-card rounded-lg transition-all" 
+                                title="Quick Health Check">
+                            <i class="fas fa-heartbeat"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Alert Banner -->
+    <div id="alert-banner" class="hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div id="alert-content" class="alert-info">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i id="alert-icon" class="fas fa-info-circle mr-3"></i>
+                        <span id="alert-message">System notification</span>
+                    </div>
+                    <button onclick="hideAlert()" class="text-current hover:opacity-70">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- System Overview Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- System Health -->
+            <div class="metric-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-slate-400">System Health</h3>
+                    <div id="system-health-icon" class="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center">
+                        <i class="fas fa-spinner fa-spin text-slate-400"></i>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-2xl font-bold" id="system-health-score">--</div>
+                    <div class="text-xs text-slate-400" id="system-health-status">Checking...</div>
+                </div>
+            </div>
+
+            <!-- API Sources -->
+            <div class="metric-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-slate-400">API Sources</h3>
+                    <div class="w-8 h-8 rounded-full bg-info/20 flex items-center justify-center">
+                        <i class="fas fa-plug text-info"></i>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-2xl font-bold" id="api-sources-count">--</div>
+                    <div class="text-xs text-slate-400">
+                        <span id="healthy-sources">--</span> healthy, 
+                        <span id="unhealthy-sources">--</span> issues
+                    </div>
+                </div>
+            </div>
+
+            <!-- Request Stats -->
+            <div class="metric-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-slate-400">Requests (24h)</h3>
+                    <div class="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center">
+                        <i class="fas fa-chart-line text-success"></i>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-2xl font-bold" id="total-requests-24h">--</div>
+                    <div class="text-xs text-slate-400">
+                        <span id="success-rate-24h">--%</span> success rate
+                    </div>
+                </div>
+            </div>
+
+            <!-- Response Time -->
+            <div class="metric-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-slate-400">Avg Response</h3>
+                    <div class="w-8 h-8 rounded-full bg-warning/20 flex items-center justify-center">
+                        <i class="fas fa-clock text-warning"></i>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-2xl font-bold" id="avg-response-time">--</div>
+                    <div class="text-xs text-slate-400">milliseconds</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Health Status Section -->
+        <div class="bg-dark-surface border border-slate-600/50 rounded-xl p-6 mb-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                <div class="flex items-center space-x-3">
+                    <h2 class="text-xl font-bold text-white">API Health Monitor</h2>
+                    <div id="health-status-badge" class="status-badge status-info">
+                        <i class="fas fa-spinner fa-spin mr-2"></i>
+                        <span>Loading...</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3 mt-4 sm:mt-0">
+                    <button id="manual-health-check" onclick="runManualHealthCheck()" 
+                            class="px-4 py-2 bg-info hover:bg-info/80 text-white rounded-lg font-medium transition-all">
+                        <i class="fas fa-sync-alt mr-2"></i>
+                        Check All APIs
+                    </button>
+                    <span id="last-health-check" class="text-sm text-slate-400">Never checked</span>
+                </div>
+            </div>
+
+            <!-- Health Status Grid -->
+            <div id="health-status-loading" class="text-center py-12">
+                <i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-4"></i>
+                <p class="text-slate-400">Loading API health status...</p>
+            </div>
+
+            <div id="health-status-error" class="hidden alert-error">
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-3"></i>
+                    <div>
+                        <div class="font-medium">Failed to Load Health Status</div>
+                        <div class="text-sm opacity-90" id="health-error-message">Unknown error occurred</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="health-status-grid" class="hidden">
+                <!-- Health status cards will be populated here -->
+            </div>
+        </div>
+
+        <!-- Recent Activity & Logs -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Recent Requests -->
+            <div class="bg-dark-surface border border-slate-600/50 rounded-xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white">Recent Requests</h2>
+                    <button onclick="refreshLogs()" class="text-slate-400 hover:text-white transition-colors">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+
+                <div id="logs-loading" class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl text-slate-400 mb-2"></i>
+                    <p class="text-slate-400">Loading recent requests...</p>
+                </div>
+
+                <div id="logs-error" class="hidden alert-error">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span id="logs-error-message">Failed to load logs</span>
+                </div>
+
+                <div id="logs-content" class="hidden space-y-3">
+                    <!-- Logs will be populated here -->
+                </div>
+            </div>
+
+            <!-- System Statistics -->
+            <div class="bg-dark-surface border border-slate-600/50 rounded-xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white">System Statistics</h2>
+                    <button onclick="refreshStats()" class="text-slate-400 hover:text-white transition-colors">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+
+                <div id="stats-loading" class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl text-slate-400 mb-2"></i>
+                    <p class="text-slate-400">Loading statistics...</p>
+                </div>
+
+                <div id="stats-error" class="hidden alert-error">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span id="stats-error-message">Failed to load statistics</span>
+                </div>
+
+                <div id="stats-content" class="hidden space-y-4">
+                    <!-- Stats will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Panel -->
+        <div class="bg-dark-surface border border-slate-600/50 rounded-xl p-6">
+            <h2 class="text-xl font-bold text-white mb-6">Quick Actions</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <button onclick="window.open('/swagger-ui', '_blank')" 
+                        class="flex items-center justify-center space-x-2 p-4 bg-info/20 hover:bg-info/30 text-info rounded-lg transition-all">
+                    <i class="fas fa-book"></i>
+                    <span>API Documentation</span>
+                </button>
+                <button onclick="window.location.href='/dashboard/management'" 
+                        class="flex items-center justify-center space-x-2 p-4 bg-warning/20 hover:bg-warning/30 text-warning rounded-lg transition-all">
+                    <i class="fas fa-cogs"></i>
+                    <span>System Management</span>
+                </button>
+                <button onclick="exportHealthReport()" 
+                        class="flex items-center justify-center space-x-2 p-4 bg-success/20 hover:bg-success/30 text-success rounded-lg transition-all">
+                    <i class="fas fa-download"></i>
+                    <span>Export Report</span>
+                </button>
+                <button onclick="showSystemInfo()" 
+                        class="flex items-center justify-center space-x-2 p-4 bg-slate-600/20 hover:bg-slate-600/30 text-slate-300 rounded-lg transition-all">
+                    <i class="fas fa-info-circle"></i>
+                    <span>System Info</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Enhanced JavaScript -->
+    <script>
+        let refreshInterval;
+        let healthCheckInProgress = false;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            startAutoRefresh();
+        });
+
+        async function initializeDashboard() {
+            showAlert('info', 'Initializing dashboard...', false);
+            
+            try {
+                await Promise.all([
+                    loadSystemHealth(),
+                    loadApiSources(),
+                    loadRequestStats(),
+                    loadRecentLogs(),
+                    loadSystemStats()
+                ]);
+                
+                updateSystemStatusIndicator('success', 'System Online');
+                hideAlert();
+            } catch (error) {
+                console.error('Dashboard initialization failed:', error);
+                updateSystemStatusIndicator('error', 'System Issues Detected');
+                showAlert('error', 'Failed to initialize dashboard. Some features may not work properly.');
+            }
+        }
+
+        async function loadSystemHealth() {
+            try {
+                const response = await fetch('/dashboard/health');
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.data) {
+                    displayHealthStatus(data.data);
+                    updateHealthMetrics(data.data);
+                } else {
+                    throw new Error(data.message || 'Failed to load health data');
+                }
+            } catch (error) {
+                console.error('Health check failed:', error);
+                showHealthError(error.message);
+            }
+        }
+
+        function displayHealthStatus(healthData) {
+            const grid = document.getElementById('health-status-grid');
+            const loading = document.getElementById('health-status-loading');
+            const errorDiv = document.getElementById('health-status-error');
+            
+            loading.classList.add('hidden');
+            errorDiv.classList.add('hidden');
+            grid.classList.remove('hidden');
+            
+            // Clear existing content
+            grid.innerHTML = '';
+            
+            // Create health status cards
+            const gridContainer = document.createElement('div');
+            gridContainer.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
+            
+            healthData.forEach(api => {
+                const card = createHealthCard(api);
+                gridContainer.appendChild(card);
+            });
+            
+            grid.appendChild(gridContainer);
+            
+            // Update health status badge
+            const healthyCount = healthData.filter(api => api.status === 'healthy').length;
+            const totalCount = healthData.length;
+            updateHealthBadge(healthyCount, totalCount);
+            
+            // Update last check time
+            document.getElementById('last-health-check').textContent = 
+                `Last checked: ${new Date().toLocaleTimeString()}`;
+        }
+
+        function createHealthCard(api) {
+            const card = document.createElement('div');
+            const isHealthy = api.status === 'healthy';
+            const statusClass = isHealthy ? 'success' : 'error';
+            const statusIcon = isHealthy ? 'fa-check-circle' : 'fa-times-circle';
+            
+            card.className = `bg-dark-card border border-slate-600/50 rounded-lg p-4 transition-all hover:border-slate-500`;
+            
+            card.innerHTML = `
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas ${statusIcon} text-${statusClass}"></i>
+                        <span class="font-medium text-white">${api.source_name || 'Unknown Source'}</span>
+                    </div>
+                    <div class="status-badge status-${statusClass}">
+                        ${api.status}
+                    </div>
+                </div>
+                
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Response Time:</span>
+                        <span class="text-white">${api.response_time || 'N/A'}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Last Checked:</span>
+                        <span class="text-white">${api.last_checked ? new Date(api.last_checked).toLocaleTimeString() : 'Never'}</span>
+                    </div>
+                    ${api.error_message ? `
+                        <div class="mt-2 p-2 bg-error/10 border border-error/30 rounded text-error text-xs">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            ${api.error_message}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function updateHealthMetrics(healthData) {
+            const healthyCount = healthData.filter(api => api.status === 'healthy').length;
+            const totalCount = healthData.length;
+            const healthScore = totalCount > 0 ? Math.round((healthyCount / totalCount) * 100) : 0;
+            
+            // Update system health card
+            const healthIcon = document.getElementById('system-health-icon');
+            const healthScoreEl = document.getElementById('system-health-score');
+            const healthStatusEl = document.getElementById('system-health-status');
+            
+            healthScoreEl.textContent = `${healthScore}%`;
+            
+            if (healthScore >= 90) {
+                healthIcon.innerHTML = '<i class="fas fa-check-circle text-success pulse-success"></i>';
+                healthStatusEl.textContent = 'Excellent';
+                healthStatusEl.className = 'text-xs text-success';
+            } else if (healthScore >= 70) {
+                healthIcon.innerHTML = '<i class="fas fa-exclamation-triangle text-warning pulse-warning"></i>';
+                healthStatusEl.textContent = 'Good';
+                healthStatusEl.className = 'text-xs text-warning';
+            } else {
+                healthIcon.innerHTML = '<i class="fas fa-times-circle text-error pulse-error"></i>';
+                healthStatusEl.textContent = 'Issues Detected';
+                healthStatusEl.className = 'text-xs text-error';
+            }
+            
+            // Update API sources card
+            document.getElementById('api-sources-count').textContent = totalCount;
+            document.getElementById('healthy-sources').textContent = healthyCount;
+            document.getElementById('unhealthy-sources').textContent = totalCount - healthyCount;
+        }
+
+        function updateHealthBadge(healthyCount, totalCount) {
+            const badge = document.getElementById('health-status-badge');
+            const percentage = totalCount > 0 ? Math.round((healthyCount / totalCount) * 100) : 0;
+            
+            badge.innerHTML = '';
+            
+            if (percentage >= 90) {
+                badge.className = 'status-badge status-success';
+                badge.innerHTML = '<i class="fas fa-check-circle mr-2"></i><span>All Systems Operational</span>';
+            } else if (percentage >= 70) {
+                badge.className = 'status-badge status-warning';
+                badge.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i><span>Minor Issues Detected</span>';
+            } else {
+                badge.className = 'status-badge status-error';
+                badge.innerHTML = '<i class="fas fa-times-circle mr-2"></i><span>Critical Issues</span>';
+            }
+        }
+
+        function showHealthError(message) {
+            document.getElementById('health-status-loading').classList.add('hidden');
+            document.getElementById('health-status-grid').classList.add('hidden');
+            
+            const errorDiv = document.getElementById('health-status-error');
+            document.getElementById('health-error-message').textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        async function loadApiSources() {
+            // Implementation for loading API sources
+            // This would fetch from /dashboard/api-sources
+        }
+
+        async function loadRequestStats() {
+            try {
+                const response = await fetch('/dashboard/stats');
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.data) {
+                    document.getElementById('total-requests-24h').textContent = data.data.total_requests || '0';
+                    document.getElementById('success-rate-24h').textContent = `${data.data.success_rate || 0}%`;
+                    document.getElementById('avg-response-time').textContent = `${data.data.avg_response_time || 0}ms`;
+                }
+            } catch (error) {
+                console.error('Failed to load request stats:', error);
+            }
+        }
+
+        async function loadRecentLogs() {
+            try {
+                const response = await fetch('/dashboard/logs');
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.data) {
+                    displayRecentLogs(data.data);
+                } else {
+                    throw new Error(data.message || 'Failed to load logs');
+                }
+            } catch (error) {
+                console.error('Failed to load logs:', error);
+                showLogsError(error.message);
+            }
+        }
+
+        function displayRecentLogs(logs) {
+            const loading = document.getElementById('logs-loading');
+            const errorDiv = document.getElementById('logs-error');
+            const content = document.getElementById('logs-content');
+            
+            loading.classList.add('hidden');
+            errorDiv.classList.add('hidden');
+            content.classList.remove('hidden');
+            
+            content.innerHTML = '';
+            
+            if (logs.length === 0) {
+                content.innerHTML = '<p class="text-slate-400 text-center py-4">No recent requests</p>';
+                return;
+            }
+            
+            logs.slice(0, 10).forEach(log => {
+                const logItem = createLogItem(log);
+                content.appendChild(logItem);
+            });
+        }
+
+        function createLogItem(log) {
+            const item = document.createElement('div');
+            const statusClass = log.status_code >= 200 && log.status_code < 300 ? 'success' : 'error';
+            const statusIcon = log.status_code >= 200 && log.status_code < 300 ? 'fa-check' : 'fa-times';
+            
+            item.className = 'flex items-center justify-between p-3 bg-dark-card rounded-lg';
+            
+            item.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <i class="fas ${statusIcon} text-${statusClass}"></i>
+                    <div>
+                        <div class="text-sm font-medium text-white">${log.endpoint}</div>
+                        <div class="text-xs text-slate-400">
+                            ${log.source_used} • ${log.response_time}ms
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="status-badge status-${statusClass}">${log.status_code}</div>
+                    <div class="text-xs text-slate-400 mt-1">
+                        ${new Date(log.created_at).toLocaleTimeString()}
+                    </div>
+                </div>
+            `;
+            
+            return item;
+        }
+
+        function showLogsError(message) {
+            document.getElementById('logs-loading').classList.add('hidden');
+            document.getElementById('logs-content').classList.add('hidden');
+            
+            const errorDiv = document.getElementById('logs-error');
+            document.getElementById('logs-error-message').textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        async function loadSystemStats() {
+            // Implementation for loading system statistics
+        }
+
+        function updateSystemStatusIndicator(type, message) {
+            const indicator = document.getElementById('system-status-indicator');
+            const statusClasses = {
+                'success': 'status-success',
+                'warning': 'status-warning',
+                'error': 'status-error',
+                'info': 'status-info'
+            };
+            const statusIcons = {
+                'success': 'fa-check-circle',
+                'warning': 'fa-exclamation-triangle',
+                'error': 'fa-times-circle',
+                'info': 'fa-info-circle'
+            };
+            
+            indicator.innerHTML = `
+                <div class="status-badge ${statusClasses[type]}">
+                    <i class="fas ${statusIcons[type]} mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+
+        function showAlert(type, message, autoHide = true) {
+            const banner = document.getElementById('alert-banner');
+            const content = document.getElementById('alert-content');
+            const icon = document.getElementById('alert-icon');
+            const messageEl = document.getElementById('alert-message');
+            
+            const alertClasses = {
+                'success': 'alert-success',
+                'warning': 'alert-warning',
+                'error': 'alert-error',
+                'info': 'alert-info'
+            };
+            const alertIcons = {
+                'success': 'fa-check-circle',
+                'warning': 'fa-exclamation-triangle',
+                'error': 'fa-times-circle',
+                'info': 'fa-info-circle'
+            };
+            
+            content.className = alertClasses[type];
+            icon.className = `fas ${alertIcons[type]} mr-3`;
+            messageEl.textContent = message;
+            
+            banner.classList.remove('hidden');
+            
+            if (autoHide) {
+                setTimeout(hideAlert, 5000);
+            }
+        }
+
+        function hideAlert() {
+            document.getElementById('alert-banner').classList.add('hidden');
+        }
+
+        async function runManualHealthCheck() {
+            if (healthCheckInProgress) return;
+            
+            healthCheckInProgress = true;
+            const button = document.getElementById('manual-health-check');
+            const originalText = button.innerHTML;
+            
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Checking...';
+            button.disabled = true;
+            
+            try {
+                const response = await fetch('/dashboard/health/check', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showAlert('success', 'Health check completed successfully');
+                    await loadSystemHealth();
+                } else {
+                    throw new Error(data.message || 'Health check failed');
+                }
+            } catch (error) {
+                console.error('Manual health check failed:', error);
+                showAlert('error', `Health check failed: ${error.message}`);
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
+                healthCheckInProgress = false;
+            }
+        }
+
+        async function runQuickHealthCheck() {
+            showAlert('info', 'Running quick health check...', false);
+            await loadSystemHealth();
+            hideAlert();
+        }
+
+        async function refreshAllData() {
+            const button = document.getElementById('refresh-all');
+            const originalIcon = button.innerHTML;
+            
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            button.disabled = true;
+            
+            try {
+                await initializeDashboard();
+                showAlert('success', 'Dashboard refreshed successfully');
+            } catch (error) {
+                showAlert('error', 'Failed to refresh dashboard');
+            } finally {
+                button.innerHTML = originalIcon;
+                button.disabled = false;
+            }
+        }
+
+        function startAutoRefresh() {
+            // Refresh every 30 seconds
+            refreshInterval = setInterval(async () => {
+                try {
+                    await Promise.all([
+                        loadSystemHealth(),
+                        loadRequestStats(),
+                        loadRecentLogs()
+                    ]);
+                } catch (error) {
+                    console.error('Auto-refresh failed:', error);
+                }
+            }, 30000);
+        }
+
+        function exportHealthReport() {
+            showAlert('info', 'Exporting health report...');
+            // Implementation for exporting health report
+        }
+
+        function showSystemInfo() {
+            showAlert('info', 'System: API Fallback v2.0 | Enhanced Dashboard | Real-time Monitoring');
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

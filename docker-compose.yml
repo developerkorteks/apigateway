@@ -6,16 +6,40 @@ services:
     ports:
       - "8080:8080"
     environment:
-      PORT: 8080
+      PORT: ${PORT:-8080}
       DATABASE_PATH: /app/data/data.db
-      REDIS_ADDR: redis:6379
-      REDIS_DB: 0
-      API_TIMEOUT: 20s
-      MAX_CONCURRENCY: 10
-      RATE_LIMIT: 100
-      RATE_LIMIT_WINDOW: 1m
-      HEALTH_CHECK_INTERVAL: 10m
-      GIN_MODE: release
+      REDIS_ADDR: ${REDIS_ADDR:-redis:6379}
+      REDIS_DB: ${REDIS_DB:-0}
+      API_TIMEOUT: ${API_TIMEOUT:-20s}
+      MAX_CONCURRENCY: ${MAX_CONCURRENCY:-10}
+      RATE_LIMIT: ${RATE_LIMIT:-100}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-1m}
+      HEALTH_CHECK_INTERVAL: ${HEALTH_CHECK_INTERVAL:-10m}
+      GIN_MODE: ${GIN_MODE:-release}
+      # Dynamic API Sources Configuration
+      # Method 1: JSON Configuration (Recommended for many sources)
+      # API_SOURCES_JSON: ${API_SOURCES_JSON:-}
+      
+      # Method 2: Individual API Source Variables (Easy to manage)
+      API_SOURCE_GOMUNIME_URL: ${API_SOURCE_GOMUNIME_URL:-http://localhost:8001}
+      API_SOURCE_WINBUTV_URL: ${API_SOURCE_WINBUTV_URL:-http://localhost:8002}
+      API_SOURCE_SAMEHADAKU_URL: ${API_SOURCE_SAMEHADAKU_URL:-http://128.199.109.211:8182}
+      API_SOURCE_MULTIPLESCRAPE_URL: ${API_SOURCE_MULTIPLESCRAPE_URL:-http://multiplescrape:8081}
+      API_SOURCE_OTAKUDESU_URL: ${API_SOURCE_OTAKUDESU_URL:-https://otakudesu.quest}
+      API_SOURCE_KUSONIME_URL: ${API_SOURCE_KUSONIME_URL:-https://kusonime.com}
+      
+      # Add more sources as needed:
+      # API_SOURCE_DRAKORINDO_URL: ${API_SOURCE_DRAKORINDO_URL:-}
+      # API_SOURCE_FILMAPIK_URL: ${API_SOURCE_FILMAPIK_URL:-}
+      # API_SOURCE_DONGHUA_WORLD_URL: ${API_SOURCE_DONGHUA_WORLD_URL:-}
+      
+      # Method 3: Legacy Support (Backward compatibility)
+      GOMUNIME_URL: ${GOMUNIME_URL:-http://localhost:8001}
+      WINBUTV_URL: ${WINBUTV_URL:-http://localhost:8002}
+      SAMEHADAKU_URL: ${SAMEHADAKU_URL:-http://128.199.109.211:8182}
+      MULTIPLESCRAPE_URL: ${MULTIPLESCRAPE_URL:-http://multiplescrape:8081}
+      OTAKUDESU_URL: ${OTAKUDESU_URL:-https://otakudesu.quest}
+      KUSONIME_URL: ${KUSONIME_URL:-https://kusonime.com}
     volumes:
       - apifallback_data:/app/data
     depends_on:
