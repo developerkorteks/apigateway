@@ -799,6 +799,72 @@ func (s *APIService) GetHealthStatus() ([]map[string]interface{}, error) {
 	return s.db.GetHealthStatusWithDetails()
 }
 
+// RunAllHealthChecks runs health checks on all active API sources
+func (s *APIService) RunAllHealthChecks() error {
+	sources, err := s.db.GetAllAPISourcesForHealthCheck()
+	if err != nil {
+		return fmt.Errorf("failed to get API sources: %v", err)
+	}
+
+	// Run health checks concurrently
+	var wg sync.WaitGroup
+	for _, source := range sources {
+		wg.Add(1)
+		go func(src database.APISource) {
+			defer wg.Done()
+			s.runHealthCheckForSource(src)
+		}(source)
+	}
+
+	wg.Wait()
+	return nil
+}
+
+// runHealthCheckForSource performs health check on a specific API source
+func (s *APIService) runHealthCheckForSource(source database.APISource) {
+	start := time.Now()
+
+	// Build health check URL - try multiple endpoints
+	healthURLs := []string{
+		strings.TrimSuffix(source.BaseURL, "/") + "/health",
+		strings.TrimSuffix(source.BaseURL, "/") + "/",
+		strings.TrimSuffix(source.BaseURL, "/"),
+	}
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	var lastErr error
+	var resp *http.Response
+
+	// Try each URL until one works
+	for _, url := range healthURLs {
+		resp, lastErr = client.Get(url)
+		if lastErr == nil && resp != nil {
+			break
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+	}
+
+	responseTime := int(time.Since(start).Milliseconds())
+
+	if lastErr != nil {
+		s.db.UpdateHealthCheck(source.ID, "ERROR", responseTime, lastErr.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		s.db.UpdateHealthCheck(source.ID, "OK", responseTime, "")
+	} else {
+		s.db.UpdateHealthCheck(source.ID, "ERROR", responseTime, fmt.Sprintf("HTTP %d", resp.StatusCode))
+	}
+}
+
 // GetRequestLogs returns recent request logs
 func (s *APIService) GetRequestLogs(limit int) ([]database.RequestLog, error) {
 	return s.db.GetRequestLogs(limit)
@@ -879,56 +945,43 @@ func (s *APIService) DeleteAPISource(id int) error {
 
 // RunManualHealthCheck performs manual health check on all active API sources
 func (s *APIService) RunManualHealthCheck() (map[string]interface{}, error) {
-	sources, err := s.db.GetAllAPISourcesForHealthCheck()
+	// Run all health checks
+	err := s.RunAllHealthChecks()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to run health checks: %v", err)
 	}
 
-	results := make(map[string]interface{})
+	// Get updated health status
+	healthStatus, err := s.GetHealthStatus()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get health status: %v", err)
+	}
+
+	// Calculate summary
 	var totalChecked, totalHealthy, totalUnhealthy int
+	totalChecked = len(healthStatus)
 
-	for _, source := range sources {
-		// Construct full URL for health check
-		fullURL := source.BaseURL + source.EndpointPath
-
-		// Perform HTTP request with timeout
-		client := &http.Client{
-			Timeout: 10 * time.Second,
-		}
-
-		start := time.Now()
-		resp, err := client.Get(fullURL)
-		responseTime := int(time.Since(start).Milliseconds())
-
-		var status string
-		var errorMessage string
-
-		if err != nil {
-			status = "unhealthy"
-			errorMessage = err.Error()
-			totalUnhealthy++
+	for _, status := range healthStatus {
+		if statusStr, ok := status["status"].(string); ok && statusStr == "healthy" {
+			totalHealthy++
 		} else {
-			defer resp.Body.Close()
-			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-				status = "healthy"
-				totalHealthy++
-			} else {
-				status = "unhealthy"
-				errorMessage = fmt.Sprintf("HTTP %d", resp.StatusCode)
-				totalUnhealthy++
-			}
+			totalUnhealthy++
 		}
-
-		totalChecked++
-
-		// Log the health check result
-		s.db.LogHealthCheck(source.ID, status, responseTime, errorMessage)
 	}
 
-	results["total_checked"] = totalChecked
-	results["healthy"] = totalHealthy
-	results["unhealthy"] = totalUnhealthy
-	results["timestamp"] = time.Now().Format("2006-01-02 15:04:05")
+	results := map[string]interface{}{
+		"total_checked":   totalChecked,
+		"total_healthy":   totalHealthy,
+		"total_unhealthy": totalUnhealthy,
+		"health_percentage": func() int {
+			if totalChecked > 0 {
+				return int((float64(totalHealthy) / float64(totalChecked)) * 100)
+			}
+			return 0
+		}(),
+		"checked_at": time.Now().Format("2006-01-02 15:04:05"),
+		"details":    healthStatus,
+	}
 
 	return results, nil
 }
