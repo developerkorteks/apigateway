@@ -16,6 +16,12 @@ COPY . .
 # Download only production dependencies
 RUN go mod download
 
+# Install swag for generating swagger docs
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+
+# Generate swagger docs
+RUN /go/bin/swag init -g cmd/main.go -o docs
+
 # Build the application with specific tags to avoid CGO dependencies
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -tags "netgo osusergo static_build" -ldflags '-w -s -extldflags "-static"' -o main cmd/main.go
 

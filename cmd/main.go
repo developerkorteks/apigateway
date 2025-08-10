@@ -17,7 +17,8 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	// _ "apicategorywithfallback/docs" // This will be generated
+
+	_ "apicategorywithfallback/docs" // Import generated docs
 )
 
 // @title API Fallback Service

@@ -26,7 +26,7 @@ const docTemplate = `{
     "paths": {
         "/api/v1/anime-detail": {
             "get": {
-                "description": "Mengambil detail anime, film, atau series termasuk episode, sinopsis, dan rekomendasi. Slug dapat berupa 'nama-anime', 'film/nama-film', atau 'series/nama-series'",
+                "description": "Retrieve detailed information about a specific anime from all available APIs. Requires anime identifier (id, slug, or anime_slug). Uses fallback mechanism when primary APIs fail.",
                 "consumes": [
                     "application/json"
                 ],
@@ -36,33 +36,66 @@ const docTemplate = `{
                 "tags": [
                     "Detail"
                 ],
-                "summary": "Get anime/movie/series detail",
+                "summary": "Get anime details from multiple sources with fallback",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Anime/Movie/Series slug (contoh: 'kobane-2022', 'film/kobane-2022', 'series/legend-of-the-female-general')",
+                        "description": "Anime ID (alternative to slug/anime_slug)",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Anime slug (alternative to id/anime_slug)",
+                        "name": "slug",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Anime slug (alternative to id/slug)",
                         "name": "anime_slug",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "anime",
+                            "korean-drama",
+                            "all"
+                        ],
+                        "type": "string",
+                        "default": "anime",
+                        "description": "Content category for API routing (anime, korean-drama, all). Internal parameter for source selection",
+                        "name": "category",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Aggregated anime details from available sources",
                         "schema": {
-                            "$ref": "#/definitions/models.AnimeDetailResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Bad request - missing required anime identifier",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not found - anime not found in any source",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error - all API sources failed",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -70,7 +103,7 @@ const docTemplate = `{
         },
         "/api/v1/anime-terbaru": {
             "get": {
-                "description": "Mengambil daftar anime terbaru dengan pagination",
+                "description": "Retrieve aggregated latest anime releases from all available APIs with automatic fallback mechanism",
                 "consumes": [
                     "application/json"
                 ],
@@ -80,27 +113,48 @@ const docTemplate = `{
                 "tags": [
                     "Anime"
                 ],
-                "summary": "Get anime terbaru",
+                "summary": "Get latest anime from multiple sources",
                 "parameters": [
                     {
                         "type": "integer",
                         "default": 1,
-                        "description": "Nomor halaman",
+                        "description": "Page number for pagination",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "anime",
+                            "korean-drama",
+                            "all"
+                        ],
+                        "type": "string",
+                        "default": "anime",
+                        "description": "Content category for API routing (anime, korean-drama, all). Used for internal source selection only",
+                        "name": "category",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Aggregated latest anime list from multiple sources with metadata",
                         "schema": {
-                            "$ref": "#/definitions/models.AnimeTerbaruResponse"
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error - all API sources failed",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -108,7 +162,7 @@ const docTemplate = `{
         },
         "/api/v1/episode-detail": {
             "get": {
-                "description": "Mengambil detail episode termasuk server streaming dan link download",
+                "description": "Retrieve detailed information about a specific episode from all available APIs. Requires episode identifier (id, episode_url, or episode_slug). Uses automatic fallback mechanism.",
                 "consumes": [
                     "application/json"
                 ],
@@ -118,33 +172,66 @@ const docTemplate = `{
                 "tags": [
                     "Detail"
                 ],
-                "summary": "Get episode detail",
+                "summary": "Get episode details from multiple sources with fallback",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "URL episode",
+                        "description": "Episode ID (alternative to episode_url/episode_slug)",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Episode URL (alternative to id/episode_slug)",
                         "name": "episode_url",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Episode slug (alternative to id/episode_url)",
+                        "name": "episode_slug",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "anime",
+                            "korean-drama",
+                            "all"
+                        ],
+                        "type": "string",
+                        "default": "anime",
+                        "description": "Content category for API routing (anime, korean-drama, all). Internal routing parameter",
+                        "name": "category",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Aggregated episode details from available sources",
                         "schema": {
-                            "$ref": "#/definitions/models.EpisodeDetailResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Bad request - missing required episode identifier",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not found - episode not found in any source",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error - all API sources failed",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -152,7 +239,7 @@ const docTemplate = `{
         },
         "/api/v1/home": {
             "get": {
-                "description": "Mengambil data homepage termasuk top 10 anime, episode terbaru, film terbaru, dan jadwal rilis",
+                "description": "Retrieve aggregated home page content from multiple anime APIs with fallback mechanism. The system automatically calls all available primary APIs and aggregates the results.",
                 "consumes": [
                     "application/json"
                 ],
@@ -160,20 +247,43 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Homepage"
+                    "Anime"
                 ],
-                "summary": "Get homepage data",
+                "summary": "Get home page content from multiple anime sources",
+                "parameters": [
+                    {
+                        "enum": [
+                            "anime",
+                            "korean-drama",
+                            "all"
+                        ],
+                        "type": "string",
+                        "default": "anime",
+                        "description": "Content category for API routing (anime, korean-drama, all). Used internally for API source selection, not forwarded to external APIs",
+                        "name": "category",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Aggregated home page content with sources info",
                         "schema": {
-                            "$ref": "#/definitions/models.HomeResponse"
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid category",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error - all API sources failed",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -181,7 +291,7 @@ const docTemplate = `{
         },
         "/api/v1/jadwal-rilis": {
             "get": {
-                "description": "Mengambil jadwal rilis anime per hari",
+                "description": "Retrieve aggregated anime release schedule for all days from multiple APIs with automatic fallback",
                 "consumes": [
                     "application/json"
                 ],
@@ -189,20 +299,43 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Schedule"
+                    "Anime"
                 ],
-                "summary": "Get jadwal rilis",
+                "summary": "Get anime release schedule from multiple sources",
+                "parameters": [
+                    {
+                        "enum": [
+                            "anime",
+                            "korean-drama",
+                            "all"
+                        ],
+                        "type": "string",
+                        "default": "anime",
+                        "description": "Content category for API routing (anime, korean-drama, all). Internal parameter, not sent to external APIs",
+                        "name": "category",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Aggregated anime release schedule with sources info",
                         "schema": {
-                            "$ref": "#/definitions/models.ScheduleResponse"
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid category",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error - all API sources failed",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -210,7 +343,7 @@ const docTemplate = `{
         },
         "/api/v1/jadwal-rilis/{day}": {
             "get": {
-                "description": "Mengambil jadwal rilis anime untuk hari tertentu",
+                "description": "Retrieve aggregated anime release schedule for a specific day from multiple APIs",
                 "consumes": [
                     "application/json"
                 ],
@@ -218,35 +351,50 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Schedule"
+                    "Anime"
                 ],
-                "summary": "Get jadwal rilis by day",
+                "summary": "Get anime release schedule by day from multiple sources",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Nama hari (monday, tuesday, wednesday, thursday, friday, saturday, sunday)",
+                        "description": "Day of the week (senin, selasa, rabu, kamis, jumat, sabtu, minggu)",
                         "name": "day",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "enum": [
+                            "anime",
+                            "korean-drama",
+                            "all"
+                        ],
+                        "type": "string",
+                        "default": "anime",
+                        "description": "Content category for API routing (anime, korean-drama, all). Internal parameter for source selection",
+                        "name": "category",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Aggregated anime release schedule for the day with sources info",
                         "schema": {
-                            "$ref": "#/definitions/models.DayScheduleResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Bad request - invalid day or category",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error - all API sources failed",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -254,7 +402,7 @@ const docTemplate = `{
         },
         "/api/v1/movie": {
             "get": {
-                "description": "Mengambil daftar film dengan pagination",
+                "description": "Retrieve aggregated anime movie listings from all available APIs with fallback mechanism",
                 "consumes": [
                     "application/json"
                 ],
@@ -264,27 +412,48 @@ const docTemplate = `{
                 "tags": [
                     "Movie"
                 ],
-                "summary": "Get movies",
+                "summary": "Get anime movies from multiple sources",
                 "parameters": [
                     {
                         "type": "integer",
                         "default": 1,
-                        "description": "Nomor halaman",
+                        "description": "Page number for pagination",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "anime",
+                            "korean-drama",
+                            "all"
+                        ],
+                        "type": "string",
+                        "default": "anime",
+                        "description": "Content category for API routing (anime, korean-drama, all). Internal routing parameter",
+                        "name": "category",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Aggregated anime movie list from multiple sources",
                         "schema": {
-                            "$ref": "#/definitions/models.MovieResponse"
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error - all API sources failed",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -292,7 +461,7 @@ const docTemplate = `{
         },
         "/api/v1/search": {
             "get": {
-                "description": "Mencari anime berdasarkan judul",
+                "description": "Search for anime by query string across all available APIs. Aggregates search results from multiple sources with automatic fallback mechanism.",
                 "consumes": [
                     "application/json"
                 ],
@@ -302,745 +471,64 @@ const docTemplate = `{
                 "tags": [
                     "Search"
                 ],
-                "summary": "Search anime",
+                "summary": "Search anime from multiple sources with fallback",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Query pencarian",
-                        "name": "query",
+                        "description": "Search query string - title, genre, or keyword to search for",
+                        "name": "q",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number for pagination",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "anime",
+                            "korean-drama",
+                            "all"
+                        ],
+                        "type": "string",
+                        "default": "anime",
+                        "description": "Content category for API routing (anime, korean-drama, all). Internal routing parameter",
+                        "name": "category",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Aggregated search results from multiple sources with metadata",
                         "schema": {
-                            "$ref": "#/definitions/models.SearchResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Bad request - missing or empty search query",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not found - no results found in any source",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error - all API sources failed",
                         "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
-                }
-            }
-        }
-    },
-    "definitions": {
-        "models.AnimeDetailResponse": {
-            "type": "object",
-            "properties": {
-                "anime_slug": {
-                    "type": "string"
-                },
-                "confidence_score": {
-                    "type": "number"
-                },
-                "cover": {
-                    "type": "string"
-                },
-                "details": {
-                    "$ref": "#/definitions/models.AnimeDetails"
-                },
-                "episode_list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.EpisodeListItem"
-                    }
-                },
-                "genre": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "judul": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "penonton": {
-                    "type": "string"
-                },
-                "rating": {
-                    "$ref": "#/definitions/models.AnimeRating"
-                },
-                "recommendations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.RecommendationItem"
-                    }
-                },
-                "sinopsis": {
-                    "type": "string"
-                },
-                "skor": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "tipe": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.AnimeDetails": {
-            "type": "object",
-            "properties": {
-                "Duration": {
-                    "type": "string"
-                },
-                "English": {
-                    "type": "string"
-                },
-                "Japanese": {
-                    "type": "string"
-                },
-                "Producers": {
-                    "type": "string"
-                },
-                "Released:": {
-                    "type": "string"
-                },
-                "Season": {
-                    "type": "string"
-                },
-                "Source": {
-                    "type": "string"
-                },
-                "Status": {
-                    "type": "string"
-                },
-                "Studio": {
-                    "type": "string"
-                },
-                "Total Episode": {
-                    "type": "string"
-                },
-                "Type": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.AnimeInfo": {
-            "type": "object",
-            "properties": {
-                "genres": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "synopsis": {
-                    "type": "string"
-                },
-                "thumbnail_url": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.AnimeRating": {
-            "type": "object",
-            "properties": {
-                "score": {
-                    "type": "string"
-                },
-                "users": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.AnimeTerbaruItem": {
-            "type": "object",
-            "properties": {
-                "anime_slug": {
-                    "type": "string"
-                },
-                "cover": {
-                    "type": "string"
-                },
-                "episode": {
-                    "type": "string"
-                },
-                "judul": {
-                    "type": "string"
-                },
-                "rilis": {
-                    "type": "string"
-                },
-                "uploader": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.AnimeTerbaruResponse": {
-            "type": "object",
-            "properties": {
-                "confidence_score": {
-                    "type": "number"
-                },
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.AnimeTerbaruItem"
-                    }
-                },
-                "message": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.DayScheduleResponse": {
-            "type": "object",
-            "properties": {
-                "confidence_score": {
-                    "type": "number"
-                },
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ScheduleItem"
-                    }
-                },
-                "message": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.DownloadLink": {
-            "type": "object",
-            "properties": {
-                "provider": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.DownloadLinksGroup": {
-            "type": "object",
-            "properties": {
-                "MKV": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/models.DownloadLink"
-                        }
-                    }
-                },
-                "MP4": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/models.DownloadLink"
-                        }
-                    }
-                },
-                "x265 [Mode Irit Kuota tapi Kualitas Sama Beningnya]": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/models.DownloadLink"
-                        }
-                    }
-                }
-            }
-        },
-        "models.EpisodeDetailResponse": {
-            "type": "object",
-            "properties": {
-                "anime_info": {
-                    "$ref": "#/definitions/models.AnimeInfo"
-                },
-                "confidence_score": {
-                    "type": "number"
-                },
-                "download_links": {
-                    "$ref": "#/definitions/models.DownloadLinksGroup"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "navigation": {
-                    "$ref": "#/definitions/models.EpisodeNavigation"
-                },
-                "other_episodes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.OtherEpisode"
-                    }
-                },
-                "release_info": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "streaming_servers": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.StreamingServer"
-                    }
-                },
-                "thumbnail_url": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.EpisodeListItem": {
-            "type": "object",
-            "properties": {
-                "episode": {
-                    "type": "string"
-                },
-                "episode_slug": {
-                    "type": "string"
-                },
-                "release_date": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.EpisodeNavigation": {
-            "type": "object",
-            "properties": {
-                "all_episodes_url": {
-                    "type": "string"
-                },
-                "next_episode_url": {
-                    "type": "string"
-                },
-                "previous_episode_url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "confidence_score": {
-                    "type": "number"
-                },
-                "error": {
-                    "type": "boolean"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.HomeResponse": {
-            "type": "object",
-            "properties": {
-                "confidence_score": {
-                    "type": "number"
-                },
-                "jadwal_rilis": {
-                    "$ref": "#/definitions/models.ScheduleData"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "movies": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.MovieItem"
-                    }
-                },
-                "new_eps": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.NewEpisodeItem"
-                    }
-                },
-                "source": {
-                    "type": "string"
-                },
-                "top10": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Top10Item"
-                    }
-                }
-            }
-        },
-        "models.MovieDetailItem": {
-            "type": "object",
-            "properties": {
-                "anime_slug": {
-                    "type": "string"
-                },
-                "cover": {
-                    "type": "string"
-                },
-                "genres": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "judul": {
-                    "type": "string"
-                },
-                "sinopsis": {
-                    "type": "string"
-                },
-                "skor": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "tanggal": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "views": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.MovieItem": {
-            "type": "object",
-            "properties": {
-                "anime_slug": {
-                    "type": "string"
-                },
-                "cover": {
-                    "type": "string"
-                },
-                "genres": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "judul": {
-                    "type": "string"
-                },
-                "tanggal": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.MovieResponse": {
-            "type": "object",
-            "properties": {
-                "confidence_score": {
-                    "type": "number"
-                },
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.MovieDetailItem"
-                    }
-                },
-                "message": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.NewEpisodeItem": {
-            "type": "object",
-            "properties": {
-                "anime_slug": {
-                    "type": "string"
-                },
-                "cover": {
-                    "type": "string"
-                },
-                "episode": {
-                    "type": "string"
-                },
-                "judul": {
-                    "type": "string"
-                },
-                "rilis": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.OtherEpisode": {
-            "type": "object",
-            "properties": {
-                "release_date": {
-                    "type": "string"
-                },
-                "thumbnail_url": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.RecommendationItem": {
-            "type": "object",
-            "properties": {
-                "anime_slug": {
-                    "type": "string"
-                },
-                "cover_url": {
-                    "type": "string"
-                },
-                "episode": {
-                    "type": "string"
-                },
-                "rating": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.ScheduleData": {
-            "type": "object",
-            "properties": {
-                "Friday": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ScheduleItem"
-                    }
-                },
-                "Monday": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ScheduleItem"
-                    }
-                },
-                "Saturday": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ScheduleItem"
-                    }
-                },
-                "Sunday": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ScheduleItem"
-                    }
-                },
-                "Thursday": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ScheduleItem"
-                    }
-                },
-                "Tuesday": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ScheduleItem"
-                    }
-                },
-                "Wednesday": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ScheduleItem"
-                    }
-                }
-            }
-        },
-        "models.ScheduleItem": {
-            "type": "object",
-            "properties": {
-                "anime_slug": {
-                    "type": "string"
-                },
-                "cover_url": {
-                    "type": "string"
-                },
-                "genres": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "release_time": {
-                    "type": "string"
-                },
-                "score": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.ScheduleResponse": {
-            "type": "object",
-            "properties": {
-                "confidence_score": {
-                    "type": "number"
-                },
-                "data": {
-                    "$ref": "#/definitions/models.ScheduleData"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.SearchResponse": {
-            "type": "object",
-            "properties": {
-                "confidence_score": {
-                    "type": "number"
-                },
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.SearchResultItem"
-                    }
-                },
-                "message": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.SearchResultItem": {
-            "type": "object",
-            "properties": {
-                "anime_slug": {
-                    "type": "string"
-                },
-                "cover": {
-                    "type": "string"
-                },
-                "genre": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "judul": {
-                    "type": "string"
-                },
-                "penonton": {
-                    "type": "string"
-                },
-                "sinopsis": {
-                    "type": "string"
-                },
-                "skor": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "tipe": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.StreamingServer": {
-            "type": "object",
-            "properties": {
-                "server_name": {
-                    "type": "string"
-                },
-                "streaming_url": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.Top10Item": {
-            "type": "object",
-            "properties": {
-                "anime_slug": {
-                    "type": "string"
-                },
-                "cover": {
-                    "type": "string"
-                },
-                "genres": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "judul": {
-                    "type": "string"
-                },
-                "rating": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
                 }
             }
         }

@@ -1,468 +1,4 @@
 basePath: /
-definitions:
-  models.AnimeDetailResponse:
-    properties:
-      anime_slug:
-        type: string
-      confidence_score:
-        type: number
-      cover:
-        type: string
-      details:
-        $ref: '#/definitions/models.AnimeDetails'
-      episode_list:
-        items:
-          $ref: '#/definitions/models.EpisodeListItem'
-        type: array
-      genre:
-        items:
-          type: string
-        type: array
-      judul:
-        type: string
-      message:
-        type: string
-      penonton:
-        type: string
-      rating:
-        $ref: '#/definitions/models.AnimeRating'
-      recommendations:
-        items:
-          $ref: '#/definitions/models.RecommendationItem'
-        type: array
-      sinopsis:
-        type: string
-      skor:
-        type: string
-      source:
-        type: string
-      status:
-        type: string
-      tipe:
-        type: string
-      url:
-        type: string
-    type: object
-  models.AnimeDetails:
-    properties:
-      Duration:
-        type: string
-      English:
-        type: string
-      Japanese:
-        type: string
-      Producers:
-        type: string
-      'Released:':
-        type: string
-      Season:
-        type: string
-      Source:
-        type: string
-      Status:
-        type: string
-      Studio:
-        type: string
-      Total Episode:
-        type: string
-      Type:
-        type: string
-    type: object
-  models.AnimeInfo:
-    properties:
-      genres:
-        items:
-          type: string
-        type: array
-      synopsis:
-        type: string
-      thumbnail_url:
-        type: string
-      title:
-        type: string
-    type: object
-  models.AnimeRating:
-    properties:
-      score:
-        type: string
-      users:
-        type: string
-    type: object
-  models.AnimeTerbaruItem:
-    properties:
-      anime_slug:
-        type: string
-      cover:
-        type: string
-      episode:
-        type: string
-      judul:
-        type: string
-      rilis:
-        type: string
-      uploader:
-        type: string
-      url:
-        type: string
-    type: object
-  models.AnimeTerbaruResponse:
-    properties:
-      confidence_score:
-        type: number
-      data:
-        items:
-          $ref: '#/definitions/models.AnimeTerbaruItem'
-        type: array
-      message:
-        type: string
-      source:
-        type: string
-    type: object
-  models.DayScheduleResponse:
-    properties:
-      confidence_score:
-        type: number
-      data:
-        items:
-          $ref: '#/definitions/models.ScheduleItem'
-        type: array
-      message:
-        type: string
-      source:
-        type: string
-    type: object
-  models.DownloadLink:
-    properties:
-      provider:
-        type: string
-      url:
-        type: string
-    type: object
-  models.DownloadLinksGroup:
-    properties:
-      MKV:
-        additionalProperties:
-          items:
-            $ref: '#/definitions/models.DownloadLink'
-          type: array
-        type: object
-      MP4:
-        additionalProperties:
-          items:
-            $ref: '#/definitions/models.DownloadLink'
-          type: array
-        type: object
-      x265 [Mode Irit Kuota tapi Kualitas Sama Beningnya]:
-        additionalProperties:
-          items:
-            $ref: '#/definitions/models.DownloadLink'
-          type: array
-        type: object
-    type: object
-  models.EpisodeDetailResponse:
-    properties:
-      anime_info:
-        $ref: '#/definitions/models.AnimeInfo'
-      confidence_score:
-        type: number
-      download_links:
-        $ref: '#/definitions/models.DownloadLinksGroup'
-      message:
-        type: string
-      navigation:
-        $ref: '#/definitions/models.EpisodeNavigation'
-      other_episodes:
-        items:
-          $ref: '#/definitions/models.OtherEpisode'
-        type: array
-      release_info:
-        type: string
-      source:
-        type: string
-      streaming_servers:
-        items:
-          $ref: '#/definitions/models.StreamingServer'
-        type: array
-      thumbnail_url:
-        type: string
-      title:
-        type: string
-    type: object
-  models.EpisodeListItem:
-    properties:
-      episode:
-        type: string
-      episode_slug:
-        type: string
-      release_date:
-        type: string
-      title:
-        type: string
-      url:
-        type: string
-    type: object
-  models.EpisodeNavigation:
-    properties:
-      all_episodes_url:
-        type: string
-      next_episode_url:
-        type: string
-      previous_episode_url:
-        type: string
-    type: object
-  models.ErrorResponse:
-    properties:
-      confidence_score:
-        type: number
-      error:
-        type: boolean
-      message:
-        type: string
-    type: object
-  models.HomeResponse:
-    properties:
-      confidence_score:
-        type: number
-      jadwal_rilis:
-        $ref: '#/definitions/models.ScheduleData'
-      message:
-        type: string
-      movies:
-        items:
-          $ref: '#/definitions/models.MovieItem'
-        type: array
-      new_eps:
-        items:
-          $ref: '#/definitions/models.NewEpisodeItem'
-        type: array
-      source:
-        type: string
-      top10:
-        items:
-          $ref: '#/definitions/models.Top10Item'
-        type: array
-    type: object
-  models.MovieDetailItem:
-    properties:
-      anime_slug:
-        type: string
-      cover:
-        type: string
-      genres:
-        items:
-          type: string
-        type: array
-      judul:
-        type: string
-      sinopsis:
-        type: string
-      skor:
-        type: string
-      status:
-        type: string
-      tanggal:
-        type: string
-      url:
-        type: string
-      views:
-        type: string
-    type: object
-  models.MovieItem:
-    properties:
-      anime_slug:
-        type: string
-      cover:
-        type: string
-      genres:
-        items:
-          type: string
-        type: array
-      judul:
-        type: string
-      tanggal:
-        type: string
-      url:
-        type: string
-    type: object
-  models.MovieResponse:
-    properties:
-      confidence_score:
-        type: number
-      data:
-        items:
-          $ref: '#/definitions/models.MovieDetailItem'
-        type: array
-      message:
-        type: string
-      source:
-        type: string
-    type: object
-  models.NewEpisodeItem:
-    properties:
-      anime_slug:
-        type: string
-      cover:
-        type: string
-      episode:
-        type: string
-      judul:
-        type: string
-      rilis:
-        type: string
-      url:
-        type: string
-    type: object
-  models.OtherEpisode:
-    properties:
-      release_date:
-        type: string
-      thumbnail_url:
-        type: string
-      title:
-        type: string
-      url:
-        type: string
-    type: object
-  models.RecommendationItem:
-    properties:
-      anime_slug:
-        type: string
-      cover_url:
-        type: string
-      episode:
-        type: string
-      rating:
-        type: string
-      title:
-        type: string
-      url:
-        type: string
-    type: object
-  models.ScheduleData:
-    properties:
-      Friday:
-        items:
-          $ref: '#/definitions/models.ScheduleItem'
-        type: array
-      Monday:
-        items:
-          $ref: '#/definitions/models.ScheduleItem'
-        type: array
-      Saturday:
-        items:
-          $ref: '#/definitions/models.ScheduleItem'
-        type: array
-      Sunday:
-        items:
-          $ref: '#/definitions/models.ScheduleItem'
-        type: array
-      Thursday:
-        items:
-          $ref: '#/definitions/models.ScheduleItem'
-        type: array
-      Tuesday:
-        items:
-          $ref: '#/definitions/models.ScheduleItem'
-        type: array
-      Wednesday:
-        items:
-          $ref: '#/definitions/models.ScheduleItem'
-        type: array
-    type: object
-  models.ScheduleItem:
-    properties:
-      anime_slug:
-        type: string
-      cover_url:
-        type: string
-      genres:
-        items:
-          type: string
-        type: array
-      release_time:
-        type: string
-      score:
-        type: string
-      title:
-        type: string
-      type:
-        type: string
-      url:
-        type: string
-    type: object
-  models.ScheduleResponse:
-    properties:
-      confidence_score:
-        type: number
-      data:
-        $ref: '#/definitions/models.ScheduleData'
-      message:
-        type: string
-      source:
-        type: string
-    type: object
-  models.SearchResponse:
-    properties:
-      confidence_score:
-        type: number
-      data:
-        items:
-          $ref: '#/definitions/models.SearchResultItem'
-        type: array
-      message:
-        type: string
-      source:
-        type: string
-    type: object
-  models.SearchResultItem:
-    properties:
-      anime_slug:
-        type: string
-      cover:
-        type: string
-      genre:
-        items:
-          type: string
-        type: array
-      judul:
-        type: string
-      penonton:
-        type: string
-      sinopsis:
-        type: string
-      skor:
-        type: string
-      status:
-        type: string
-      tipe:
-        type: string
-      url:
-        type: string
-    type: object
-  models.StreamingServer:
-    properties:
-      server_name:
-        type: string
-      streaming_url:
-        type: string
-    type: object
-  models.Top10Item:
-    properties:
-      anime_slug:
-        type: string
-      cover:
-        type: string
-      genres:
-        items:
-          type: string
-        type: array
-      judul:
-        type: string
-      rating:
-        type: string
-      url:
-        type: string
-    type: object
 host: localhost:8080
 info:
   contact:
@@ -482,208 +18,372 @@ paths:
     get:
       consumes:
       - application/json
-      description: Mengambil detail anime, film, atau series termasuk episode, sinopsis,
-        dan rekomendasi. Slug dapat berupa 'nama-anime', 'film/nama-film', atau 'series/nama-series'
+      description: Retrieve detailed information about a specific anime from all available
+        APIs. Requires anime identifier (id, slug, or anime_slug). Uses fallback mechanism
+        when primary APIs fail.
       parameters:
-      - description: 'Anime/Movie/Series slug (contoh: ''kobane-2022'', ''film/kobane-2022'',
-          ''series/legend-of-the-female-general'')'
+      - description: Anime ID (alternative to slug/anime_slug)
+        in: query
+        name: id
+        type: string
+      - description: Anime slug (alternative to id/anime_slug)
+        in: query
+        name: slug
+        type: string
+      - description: Anime slug (alternative to id/slug)
         in: query
         name: anime_slug
-        required: true
+        type: string
+      - default: anime
+        description: Content category for API routing (anime, korean-drama, all).
+          Internal parameter for source selection
+        enum:
+        - anime
+        - korean-drama
+        - all
+        in: query
+        name: category
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Aggregated anime details from available sources
           schema:
-            $ref: '#/definitions/models.AnimeDetailResponse'
+            additionalProperties: true
+            type: object
         "400":
-          description: Bad Request
+          description: Bad request - missing required anime identifier
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not found - anime not found in any source
+          schema:
+            additionalProperties: true
+            type: object
         "500":
-          description: Internal Server Error
+          description: Internal server error - all API sources failed
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      summary: Get anime/movie/series detail
+            additionalProperties: true
+            type: object
+      summary: Get anime details from multiple sources with fallback
       tags:
       - Detail
   /api/v1/anime-terbaru:
     get:
       consumes:
       - application/json
-      description: Mengambil daftar anime terbaru dengan pagination
+      description: Retrieve aggregated latest anime releases from all available APIs
+        with automatic fallback mechanism
       parameters:
       - default: 1
-        description: Nomor halaman
+        description: Page number for pagination
         in: query
         name: page
         type: integer
+      - default: anime
+        description: Content category for API routing (anime, korean-drama, all).
+          Used for internal source selection only
+        enum:
+        - anime
+        - korean-drama
+        - all
+        in: query
+        name: category
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Aggregated latest anime list from multiple sources with metadata
           schema:
-            $ref: '#/definitions/models.AnimeTerbaruResponse'
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            additionalProperties: true
+            type: object
         "500":
-          description: Internal Server Error
+          description: Internal server error - all API sources failed
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      summary: Get anime terbaru
+            additionalProperties: true
+            type: object
+      summary: Get latest anime from multiple sources
       tags:
       - Anime
   /api/v1/episode-detail:
     get:
       consumes:
       - application/json
-      description: Mengambil detail episode termasuk server streaming dan link download
+      description: Retrieve detailed information about a specific episode from all
+        available APIs. Requires episode identifier (id, episode_url, or episode_slug).
+        Uses automatic fallback mechanism.
       parameters:
-      - description: URL episode
+      - description: Episode ID (alternative to episode_url/episode_slug)
+        in: query
+        name: id
+        type: string
+      - description: Episode URL (alternative to id/episode_slug)
         in: query
         name: episode_url
-        required: true
+        type: string
+      - description: Episode slug (alternative to id/episode_url)
+        in: query
+        name: episode_slug
+        type: string
+      - default: anime
+        description: Content category for API routing (anime, korean-drama, all).
+          Internal routing parameter
+        enum:
+        - anime
+        - korean-drama
+        - all
+        in: query
+        name: category
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Aggregated episode details from available sources
           schema:
-            $ref: '#/definitions/models.EpisodeDetailResponse'
+            additionalProperties: true
+            type: object
         "400":
-          description: Bad Request
+          description: Bad request - missing required episode identifier
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not found - episode not found in any source
+          schema:
+            additionalProperties: true
+            type: object
         "500":
-          description: Internal Server Error
+          description: Internal server error - all API sources failed
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      summary: Get episode detail
+            additionalProperties: true
+            type: object
+      summary: Get episode details from multiple sources with fallback
       tags:
       - Detail
   /api/v1/home:
     get:
       consumes:
       - application/json
-      description: Mengambil data homepage termasuk top 10 anime, episode terbaru,
-        film terbaru, dan jadwal rilis
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.HomeResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      summary: Get homepage data
-      tags:
-      - Homepage
-  /api/v1/jadwal-rilis:
-    get:
-      consumes:
-      - application/json
-      description: Mengambil jadwal rilis anime per hari
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.ScheduleResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      summary: Get jadwal rilis
-      tags:
-      - Schedule
-  /api/v1/jadwal-rilis/{day}:
-    get:
-      consumes:
-      - application/json
-      description: Mengambil jadwal rilis anime untuk hari tertentu
+      description: Retrieve aggregated home page content from multiple anime APIs
+        with fallback mechanism. The system automatically calls all available primary
+        APIs and aggregates the results.
       parameters:
-      - description: Nama hari (monday, tuesday, wednesday, thursday, friday, saturday,
-          sunday)
-        in: path
-        name: day
-        required: true
+      - default: anime
+        description: Content category for API routing (anime, korean-drama, all).
+          Used internally for API source selection, not forwarded to external APIs
+        enum:
+        - anime
+        - korean-drama
+        - all
+        in: query
+        name: category
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Aggregated home page content with sources info
           schema:
-            $ref: '#/definitions/models.DayScheduleResponse'
+            additionalProperties: true
+            type: object
         "400":
-          description: Bad Request
+          description: Bad request - invalid category
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            additionalProperties: true
+            type: object
         "500":
-          description: Internal Server Error
+          description: Internal server error - all API sources failed
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      summary: Get jadwal rilis by day
+            additionalProperties: true
+            type: object
+      summary: Get home page content from multiple anime sources
       tags:
-      - Schedule
-  /api/v1/movie:
+      - Anime
+  /api/v1/jadwal-rilis:
     get:
       consumes:
       - application/json
-      description: Mengambil daftar film dengan pagination
+      description: Retrieve aggregated anime release schedule for all days from multiple
+        APIs with automatic fallback
       parameters:
-      - default: 1
-        description: Nomor halaman
+      - default: anime
+        description: Content category for API routing (anime, korean-drama, all).
+          Internal parameter, not sent to external APIs
+        enum:
+        - anime
+        - korean-drama
+        - all
         in: query
-        name: page
-        type: integer
+        name: category
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Aggregated anime release schedule with sources info
           schema:
-            $ref: '#/definitions/models.MovieResponse'
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - invalid category
+          schema:
+            additionalProperties: true
+            type: object
         "500":
-          description: Internal Server Error
+          description: Internal server error - all API sources failed
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      summary: Get movies
+            additionalProperties: true
+            type: object
+      summary: Get anime release schedule from multiple sources
+      tags:
+      - Anime
+  /api/v1/jadwal-rilis/{day}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve aggregated anime release schedule for a specific day from
+        multiple APIs
+      parameters:
+      - description: Day of the week (senin, selasa, rabu, kamis, jumat, sabtu, minggu)
+        in: path
+        name: day
+        required: true
+        type: string
+      - default: anime
+        description: Content category for API routing (anime, korean-drama, all).
+          Internal parameter for source selection
+        enum:
+        - anime
+        - korean-drama
+        - all
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Aggregated anime release schedule for the day with sources
+            info
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - invalid day or category
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error - all API sources failed
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get anime release schedule by day from multiple sources
+      tags:
+      - Anime
+  /api/v1/movie:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve aggregated anime movie listings from all available APIs
+        with fallback mechanism
+      parameters:
+      - default: 1
+        description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - default: anime
+        description: Content category for API routing (anime, korean-drama, all).
+          Internal routing parameter
+        enum:
+        - anime
+        - korean-drama
+        - all
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Aggregated anime movie list from multiple sources
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request - invalid parameters
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error - all API sources failed
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get anime movies from multiple sources
       tags:
       - Movie
   /api/v1/search:
     get:
       consumes:
       - application/json
-      description: Mencari anime berdasarkan judul
+      description: Search for anime by query string across all available APIs. Aggregates
+        search results from multiple sources with automatic fallback mechanism.
       parameters:
-      - description: Query pencarian
+      - description: Search query string - title, genre, or keyword to search for
         in: query
-        name: query
+        name: q
         required: true
+        type: string
+      - default: 1
+        description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - default: anime
+        description: Content category for API routing (anime, korean-drama, all).
+          Internal routing parameter
+        enum:
+        - anime
+        - korean-drama
+        - all
+        in: query
+        name: category
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Aggregated search results from multiple sources with metadata
           schema:
-            $ref: '#/definitions/models.SearchResponse'
+            additionalProperties: true
+            type: object
         "400":
-          description: Bad Request
+          description: Bad request - missing or empty search query
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not found - no results found in any source
+          schema:
+            additionalProperties: true
+            type: object
         "500":
-          description: Internal Server Error
+          description: Internal server error - all API sources failed
           schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      summary: Search anime
+            additionalProperties: true
+            type: object
+      summary: Search anime from multiple sources with fallback
       tags:
       - Search
 schemes:
