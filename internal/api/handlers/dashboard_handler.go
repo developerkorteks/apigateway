@@ -41,6 +41,14 @@ func (h *DashboardHandler) ShowManagement(c *gin.Context) {
 }
 
 // GetHealthStatus returns the health status of all API sources
+// @Summary Get health status of all API sources
+// @Description Retrieve current health status, response times, and availability of all registered API sources
+// @Tags System
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Health status data for all API sources with response times and availability"
+// @Failure 500 {object} map[string]interface{} "Internal server error - failed to retrieve health status"
+// @Router /dashboard/health [get]
 func (h *DashboardHandler) GetHealthStatus(c *gin.Context) {
 	healthStatus, err := h.apiService.GetHealthStatus()
 	if err != nil {

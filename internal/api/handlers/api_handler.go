@@ -28,7 +28,7 @@ func NewAPIHandler(apiService *service.APIService) *APIHandler {
 // @Tags Anime
 // @Accept json
 // @Produce json
-// @Param category query string false "Content category for API routing (anime, korean-drama, all). Used internally for API source selection, not forwarded to external APIs" default(anime) Enums(anime, korean-drama, all)
+// @Param category query string false "Content category for API routing - dynamically loaded from database" default(anime)
 // @Success 200 {object} map[string]interface{} "Aggregated home page content with sources info"
 // @Failure 400 {object} map[string]interface{} "Bad request - invalid category"
 // @Failure 500 {object} map[string]interface{} "Internal server error - all API sources failed"
@@ -44,7 +44,7 @@ func (h *APIHandler) HandleHome(c *gin.Context) {
 // @Tags Anime
 // @Accept json
 // @Produce json
-// @Param category query string false "Content category for API routing (anime, korean-drama, all). Internal parameter, not sent to external APIs" default(anime) Enums(anime, korean-drama, all)
+// @Param category query string false "Content category for API routing - dynamically loaded from database" default(anime)
 // @Success 200 {object} map[string]interface{} "Aggregated anime release schedule with sources info"
 // @Failure 400 {object} map[string]interface{} "Bad request - invalid category"
 // @Failure 500 {object} map[string]interface{} "Internal server error - all API sources failed"
@@ -61,7 +61,7 @@ func (h *APIHandler) HandleJadwalRilis(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param day path string true "Day of the week (senin, selasa, rabu, kamis, jumat, sabtu, minggu)"
-// @Param category query string false "Content category for API routing (anime, korean-drama, all). Internal parameter for source selection" default(anime) Enums(anime, korean-drama, all)
+// @Param category query string false "Content category for API routing - dynamically loaded from database" default(anime)
 // @Success 200 {object} map[string]interface{} "Aggregated anime release schedule for the day with sources info"
 // @Failure 400 {object} map[string]interface{} "Bad request - invalid day or category"
 // @Failure 500 {object} map[string]interface{} "Internal server error - all API sources failed"
@@ -79,7 +79,7 @@ func (h *APIHandler) HandleJadwalRilisDay(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param page query int false "Page number for pagination" default(1)
-// @Param category query string false "Content category for API routing (anime, korean-drama, all). Used for internal source selection only" default(anime) Enums(anime, korean-drama, all)
+// @Param category query string false "Content category for API routing - dynamically loaded from database" default(anime)
 // @Success 200 {object} map[string]interface{} "Aggregated latest anime list from multiple sources with metadata"
 // @Failure 400 {object} map[string]interface{} "Bad request - invalid parameters"
 // @Failure 500 {object} map[string]interface{} "Internal server error - all API sources failed"
@@ -115,7 +115,7 @@ func (h *APIHandler) HandleMovie(c *gin.Context) {
 // @Param id query string false "Anime ID (alternative to slug/anime_slug)"
 // @Param slug query string false "Anime slug (alternative to id/anime_slug)"
 // @Param anime_slug query string false "Anime slug (alternative to id/slug)"
-// @Param category query string false "Content category for API routing (anime, korean-drama, all). Internal parameter for source selection" default(anime) Enums(anime, korean-drama, all)
+// @Param category query string false "Content category for API routing - dynamically loaded from database" default(anime)
 // @Success 200 {object} map[string]interface{} "Aggregated anime details from available sources"
 // @Failure 400 {object} map[string]interface{} "Bad request - missing required anime identifier"
 // @Failure 404 {object} map[string]interface{} "Not found - anime not found in any source"
@@ -195,6 +195,21 @@ func (h *APIHandler) HandleEpisodeDetail(c *gin.Context) {
 func (h *APIHandler) HandleSearch(c *gin.Context) {
 	ctx := h.buildRequestContext(c, "/api/v1/search")
 	h.processRequest(c, ctx)
+}
+
+// HandleHealthCheck handles global health check endpoint
+// @Summary Service health check
+// @Description Basic health check endpoint to verify the service is running and operational
+// @Tags System
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Service is healthy and operational"
+// @Router /health [get]
+func (h *APIHandler) HandleHealthCheck(c *gin.Context) {
+	c.JSON(200, gin.H{
+		"status":  "ok",
+		"service": "apicategorywithfallback",
+	})
 }
 
 // buildRequestContext creates a request context from Gin context

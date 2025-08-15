@@ -121,6 +121,13 @@ func unwrapNestedAPIResponse(responseData interface{}, sourceName string) interf
 		return responseData
 	}
 
+	// First, check if this is an aggregated response that needs category-level unwrapping
+	if hasAggregatedStructure := hasDataByCategory(responseMap); hasAggregatedStructure {
+		logger.Infof("🔍 Detected aggregated response structure from %s, checking for nested categories", sourceName)
+		unwrappedAggregated := unwrapAggregatedResponse(responseMap, sourceName)
+		return unwrappedAggregated
+	}
+
 	// Detect if this response needs unwrapping using dynamic pattern detection
 	if !shouldUnwrapResponse(responseMap, sourceName) {
 		logger.Infof("✅ Response from %s doesn't need unwrapping, structure is already flat", sourceName)
@@ -156,6 +163,7 @@ func unwrapNestedAPIResponse(responseData interface{}, sourceName string) interf
 
 	logger.Infof("🎯 Successfully unwrapped response from %s: moved %d fields from data.*, preserved %d metadata fields",
 		sourceName, len(dataMap), len(metadataFields))
+
 	return unwrappedData
 }
 
@@ -317,4 +325,120 @@ func isMetadataField(fieldName string) bool {
 	}
 
 	return false
+}
+
+// unwrapAggregatedResponse handles nested structure within aggregated responses (category=all)
+func unwrapAggregatedResponse(responseMap map[string]interface{}, sourceName string) map[string]interface{} {
+	dataInterface, exists := responseMap["data"]
+	if !exists {
+		return responseMap // No data field, nothing to unwrap
+	}
+
+	dataMap, ok := dataInterface.(map[string]interface{})
+	if !ok {
+		return responseMap // Data is not a map, nothing to unwrap
+	}
+
+	// Check if this is an aggregated response with data_by_category
+	dataByCategoryInterface, exists := dataMap["data_by_category"]
+	if !exists {
+		return responseMap // Not an aggregated response
+	}
+
+	dataByCategoryMap, ok := dataByCategoryInterface.(map[string]interface{})
+	if !ok {
+		return responseMap // data_by_category is not a map
+	}
+
+	logger.Infof("🔧 Checking aggregated response from %s for nested structures in data_by_category", sourceName)
+
+	// Process each category within data_by_category
+	hasUnwrapped := false
+	for category, categoryDataInterface := range dataByCategoryMap {
+		categoryDataMap, ok := categoryDataInterface.(map[string]interface{})
+		if !ok {
+			continue // Category data is not a map, skip
+		}
+
+		logger.Infof("🔍 Analyzing category '%s' from %s for nested structure", category, sourceName)
+
+		// Check if this category data has nested structure
+		if shouldUnwrapResponse(categoryDataMap, fmt.Sprintf("%s:%s", sourceName, category)) {
+			logger.Infof("🎯 Unwrapping nested structure in category '%s' from %s", category, sourceName)
+
+			unwrappedCategoryData := performCategoryUnwrapping(categoryDataMap, sourceName, category)
+			dataByCategoryMap[category] = unwrappedCategoryData
+			hasUnwrapped = true
+		}
+	}
+
+	if hasUnwrapped {
+		logger.Infof("✅ Successfully unwrapped aggregated response from %s", sourceName)
+
+		// Update the response with unwrapped categories
+		dataMap["data_by_category"] = dataByCategoryMap
+		responseMap["data"] = dataMap
+	}
+
+	return responseMap
+}
+
+// hasDataByCategory checks if the response has aggregated structure with data_by_category
+func hasDataByCategory(responseMap map[string]interface{}) bool {
+	logger.Infof("🔍 Checking if response has aggregated structure...")
+
+	dataInterface, exists := responseMap["data"]
+	if !exists {
+		logger.Infof("🔍 No 'data' field found, not aggregated")
+		return false
+	}
+
+	dataMap, ok := dataInterface.(map[string]interface{})
+	if !ok {
+		logger.Infof("🔍 'data' field is not a map, not aggregated")
+		return false
+	}
+
+	_, hasDataByCategory := dataMap["data_by_category"]
+	logger.Infof("🔍 Has 'data_by_category' field: %v", hasDataByCategory)
+	return hasDataByCategory
+}
+
+// performCategoryUnwrapping extracts nested data from a single category within aggregated response
+func performCategoryUnwrapping(categoryDataMap map[string]interface{}, sourceName, category string) map[string]interface{} {
+	// Extract data and metadata
+	dataField := categoryDataMap["data"]
+	innerDataMap, ok := dataField.(map[string]interface{})
+	if !ok {
+		logger.Infof("❌ Unable to extract nested data from category '%s' in %s, returning as-is", category, sourceName)
+		return categoryDataMap
+	}
+
+	logger.Infof("✅ Detected nested structure in category '%s' from %s - proceeding with unwrapping", category, sourceName)
+	logger.Infof("🔄 Extracting inner data and preserving metadata for category '%s' from %s", category, sourceName)
+
+	// Extract the inner data and add metadata from the outer level
+	unwrappedData := make(map[string]interface{})
+
+	// Copy all data from the inner "data" field
+	for key, value := range innerDataMap {
+		unwrappedData[key] = value
+	}
+
+	// Preserve ALL metadata from the category level (dynamic preservation)
+	metadataFields := extractMetadataFields(categoryDataMap)
+	for key, value := range metadataFields {
+		// Avoid overwriting fields from inner data
+		if _, exists := unwrappedData[key]; !exists {
+			unwrappedData[key] = value
+		} else {
+			// If conflict, preserve inner data but add metadata with prefix
+			unwrappedData["_"+key] = value
+		}
+	}
+
+	logger.Infof("🎯 Successfully unwrapped category '%s' from %s: moved %d fields from data.*, preserved %d metadata fields",
+		category, sourceName, len(innerDataMap), len(metadataFields))
+
+	return unwrappedData
 }

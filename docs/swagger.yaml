@@ -55,12 +55,7 @@ paths:
         name: anime_slug
         type: string
       - default: anime
-        description: Content category for API routing (anime, korean-drama, all).
-          Internal parameter for source selection
-        enum:
-        - anime
-        - korean-drama
-        - all
+        description: Content category for API routing - dynamically loaded from database
         in: query
         name: category
         type: string
@@ -103,12 +98,7 @@ paths:
         name: page
         type: integer
       - default: anime
-        description: Content category for API routing (anime, korean-drama, all).
-          Used for internal source selection only
-        enum:
-        - anime
-        - korean-drama
-        - all
+        description: Content category for API routing - dynamically loaded from database
         in: query
         name: category
         type: string
@@ -193,12 +183,7 @@ paths:
         APIs and aggregates the results.
       parameters:
       - default: anime
-        description: Content category for API routing (anime, korean-drama, all).
-          Used internally for API source selection, not forwarded to external APIs
-        enum:
-        - anime
-        - korean-drama
-        - all
+        description: Content category for API routing - dynamically loaded from database
         in: query
         name: category
         type: string
@@ -231,12 +216,7 @@ paths:
         APIs with automatic fallback
       parameters:
       - default: anime
-        description: Content category for API routing (anime, korean-drama, all).
-          Internal parameter, not sent to external APIs
-        enum:
-        - anime
-        - korean-drama
-        - all
+        description: Content category for API routing - dynamically loaded from database
         in: query
         name: category
         type: string
@@ -274,12 +254,7 @@ paths:
         required: true
         type: string
       - default: anime
-        description: Content category for API routing (anime, korean-drama, all).
-          Internal parameter for source selection
-        enum:
-        - anime
-        - korean-drama
-        - all
+        description: Content category for API routing - dynamically loaded from database
         in: query
         name: category
         type: string
@@ -426,6 +401,46 @@ paths:
       summary: Clear cache for specific endpoint
       tags:
       - Admin
+  /dashboard/health:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve current health status, response times, and availability
+        of all registered API sources
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Health status data for all API sources with response times
+            and availability
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error - failed to retrieve health status
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get health status of all API sources
+      tags:
+      - System
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Basic health check endpoint to verify the service is running and
+        operational
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is healthy and operational
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Service health check
+      tags:
+      - System
 schemes:
 - http
 - https

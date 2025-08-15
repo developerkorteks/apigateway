@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	neturl "net/url"
 	"strings"
 	"sync"
 	"time"
@@ -452,15 +453,21 @@ func (s *APIService) aggregateListData(result map[string]interface{}, responses 
 	var allData []interface{}
 	seenItems := make(map[string]bool) // For deduplication based on unique identifiers
 
-	for _, resp := range responses {
+	logger.Infof("🔄 AGGREGATION DEBUG: Starting aggregation of %d responses for dataKey='%s'", len(responses), dataKey)
+
+	for i, resp := range responses {
 		var data map[string]interface{}
 		if err := json.Unmarshal(resp.Data, &data); err != nil {
 			logger.Warnf("Failed to unmarshal response from %s: %v", resp.SourceName, err)
 			continue
 		}
 
+		logger.Infof("🔄 AGGREGATION DEBUG: Processing response %d from %s", i+1, resp.SourceName)
+
 		if listData, exists := data[dataKey]; exists {
+			logger.Infof("🔄 AGGREGATION DEBUG: Found '%s' field in response from %s", dataKey, resp.SourceName)
 			if list, ok := listData.([]interface{}); ok {
+				logger.Infof("🔄 AGGREGATION DEBUG: Response from %s has %d items", resp.SourceName, len(list))
 				for _, item := range list {
 					if itemMap, ok := item.(map[string]interface{}); ok {
 						// Create unique key based on available identifiers
@@ -482,9 +489,9 @@ func (s *APIService) aggregateListData(result map[string]interface{}, responses 
 						if uniqueKey != "" && !seenItems[uniqueKey] {
 							seenItems[uniqueKey] = true
 							allData = append(allData, item)
-							logger.Debugf("Added unique item from %s: %s", resp.SourceName, uniqueKey)
+							logger.Infof("✅ Added unique item from %s: %s", resp.SourceName, uniqueKey)
 						} else if uniqueKey != "" {
-							logger.Debugf("Skipped duplicate item from %s: %s", resp.SourceName, uniqueKey)
+							logger.Infof("❌ Skipped duplicate item from %s: %s (already exists)", resp.SourceName, uniqueKey)
 						}
 					} else {
 						// If item is not a map, add it directly (no deduplication possible)
@@ -528,6 +535,11 @@ func (s *APIService) aggregateScheduleData(result map[string]interface{}, respon
 func (s *APIService) makeAPIRequest(url, sourceName string, isFallback bool) *domain.APIResponse {
 	startTime := time.Now()
 
+	// Debug logging for search requests
+	if strings.Contains(url, "/api/v1/search") {
+		logger.Infof("🔍 SEARCH DEBUG - Making request to %s: %s", sourceName, url)
+	}
+
 	// Validate URL
 	if url == "" {
 		return &domain.APIResponse{
@@ -568,8 +580,16 @@ func (s *APIService) makeAPIRequest(url, sourceName string, isFallback bool) *do
 		}
 	}()
 
+	// Debug logging for search requests - response status
+	if strings.Contains(url, "/api/v1/search") {
+		logger.Infof("🔍 SEARCH DEBUG - Response from %s: Status %d, Time %v", sourceName, resp.StatusCode, time.Since(startTime))
+	}
+
 	// Check for HTTP errors
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		if strings.Contains(url, "/api/v1/search") {
+			logger.Errorf("🔍 SEARCH DEBUG - ERROR from %s: HTTP %d: %s", sourceName, resp.StatusCode, resp.Status)
+		}
 		return &domain.APIResponse{
 			Error:        fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status),
 			StatusCode:   resp.StatusCode,
@@ -663,10 +683,18 @@ func (s *APIService) normalizeResponseStructure(data []byte, sourceName string) 
 	}
 
 	dataMap, isDataMap := dataField.(map[string]interface{})
-	logger.Infof("🔍 Data field is map from %s: %v", sourceName, isDataMap)
-	if !isDataMap {
-		// If data is not a map, return as is
-		logger.Infof("❌ Data field is not a map, returning original response from %s", sourceName)
+	_, isDataArray := dataField.([]interface{})
+	logger.Infof("🔍 Data field type from %s: isMap=%v, isArray=%v", sourceName, isDataMap, isDataArray)
+
+	if !isDataMap && !isDataArray {
+		// If data is neither a map nor array, return as is
+		logger.Infof("❌ Data field is neither map nor array, returning original response from %s", sourceName)
+		return data, nil
+	}
+
+	// If data is already an array (like in search results), no normalization needed
+	if isDataArray {
+		logger.Infof("✅ Data field is array from %s, no normalization needed", sourceName)
 		return data, nil
 	}
 
@@ -874,9 +902,17 @@ func (s *APIService) buildURL(baseURL, endpoint string, params map[string]string
 			if !first {
 				url += "&"
 			}
-			url += fmt.Sprintf("%s=%s", key, value)
+			// Properly encode URL parameters
+			url += fmt.Sprintf("%s=%s", neturl.QueryEscape(key), neturl.QueryEscape(value))
 			first = false
 		}
+	}
+
+	// Debug logging for search endpoints
+	if endpoint == "/api/v1/search" {
+		logger.Infof("🔍 SEARCH DEBUG - Built URL: %s", url)
+		logger.Infof("🔍 SEARCH DEBUG - Original params: %+v", params)
+		logger.Infof("🔍 SEARCH DEBUG - Query params after mapping: %+v", queryParams)
 	}
 
 	return url
@@ -1693,7 +1729,11 @@ func (s *APIService) aggregateResponsesFromAllCategories(responses []*domain.API
 
 			// Remove category field from individual data before storing
 			delete(data, "category")
-			categoryData[categoryName] = data
+
+			// Apply unwrapping to individual response before adding to aggregated data
+			// This ensures nested structures (like gomunime) are flattened
+			unwrappedData := unwrapIndividualResponse(data, resp.SourceName)
+			categoryData[categoryName] = unwrappedData
 		}
 	}
 
@@ -1732,4 +1772,131 @@ func (s *APIService) aggregateResponsesFromAllCategories(responses []*domain.API
 		SourceName:   "aggregated_all_categories",
 		IsFallback:   false,
 	}
+}
+
+// unwrapIndividualResponse applies unwrapping logic to individual response data before aggregation
+// This ensures nested structures (like gomunime) are flattened before being added to categoryData
+func unwrapIndividualResponse(data map[string]interface{}, sourceName string) map[string]interface{} {
+	logger.Infof("🔧 Pre-aggregation unwrapping check for %s", sourceName)
+
+	// Check if this individual response has nested structure using the same pattern detection
+	if !shouldUnwrapIndividualResponse(data, sourceName) {
+		logger.Infof("✅ Individual response from %s doesn't need unwrapping", sourceName)
+		return data
+	}
+
+	// Extract data and metadata
+	dataField := data["data"]
+	innerDataMap, ok := dataField.(map[string]interface{})
+	if !ok {
+		logger.Infof("❌ Unable to extract nested data from %s, returning as-is", sourceName)
+		return data
+	}
+
+	logger.Infof("✅ Detected nested structure in individual response from %s - proceeding with unwrapping", sourceName)
+	logger.Infof("🔄 Extracting inner data and preserving metadata from individual %s response", sourceName)
+
+	// Extract the inner data and add metadata from the outer level
+	unwrappedData := make(map[string]interface{})
+
+	// Copy all data from the inner "data" field
+	for key, value := range innerDataMap {
+		unwrappedData[key] = value
+	}
+
+	// Preserve metadata from the outer level
+	metadataFields := extractIndividualMetadataFields(data)
+	for key, value := range metadataFields {
+		// Avoid overwriting fields from inner data
+		if _, exists := unwrappedData[key]; !exists {
+			unwrappedData[key] = value
+		} else {
+			// If conflict, preserve inner data but add metadata with prefix
+			unwrappedData["_"+key] = value
+		}
+	}
+
+	logger.Infof("🎯 Successfully unwrapped individual response from %s: moved %d fields from data.*, preserved %d metadata fields",
+		sourceName, len(innerDataMap), len(metadataFields))
+
+	return unwrappedData
+}
+
+// shouldUnwrapIndividualResponse checks if individual response needs unwrapping using similar logic
+func shouldUnwrapIndividualResponse(responseMap map[string]interface{}, sourceName string) bool {
+	// Pattern 1: Must have a "data" field
+	dataField, hasData := responseMap["data"]
+	if !hasData {
+		logger.Infof("🔍 Pre-aggregation check: No 'data' field found in %s response", sourceName)
+		return false
+	}
+
+	// Pattern 2: The "data" field must be a map (not a simple value)
+	dataMap, isDataMap := dataField.(map[string]interface{})
+	if !isDataMap {
+		logger.Infof("🔍 Pre-aggregation check: 'data' field from %s is not a map (%T), skipping unwrapping", sourceName, dataField)
+		return false
+	}
+
+	// Pattern 3: The data map should contain substantial content
+	if len(dataMap) < 2 {
+		logger.Infof("🔍 Pre-aggregation check: 'data' field from %s has too few fields (%d), likely not actual content", sourceName, len(dataMap))
+		return false
+	}
+
+	// Pattern 4: Response should have metadata fields at root level
+	metadataCount := 0
+	metadataIndicators := []string{"confidence_score", "message", "source", "status", "success"}
+	for _, indicator := range metadataIndicators {
+		if _, exists := responseMap[indicator]; exists {
+			metadataCount++
+		}
+	}
+
+	if metadataCount < 1 {
+		logger.Infof("🔍 Pre-aggregation check: No metadata indicators found in %s response, likely already flat", sourceName)
+		return false
+	}
+
+	// Pattern 5: The inner data should look like actual content
+	contentCount := 0
+	contentIndicators := []string{
+		"title", "name", "id", "slug", "url", "anime_info", "download_links",
+		"streaming_servers", "navigation", "other_episodes", "release_info",
+		"thumbnail_url", "episode_number", "anime_slug", "cover", "genre",
+	}
+	for _, indicator := range contentIndicators {
+		if _, exists := dataMap[indicator]; exists {
+			contentCount++
+		}
+	}
+
+	if contentCount < 1 {
+		logger.Infof("🔍 Pre-aggregation check: Inner 'data' from %s doesn't contain enough content indicators (%d)", sourceName, contentCount)
+		return false
+	}
+
+	logger.Infof("🎯 Pre-aggregation pattern detection SUCCESS for %s: data=%d fields, metadata=%d indicators, content=%d indicators - WILL UNWRAP",
+		sourceName, len(dataMap), metadataCount, contentCount)
+	return true
+}
+
+// extractIndividualMetadataFields extracts metadata fields from individual response
+func extractIndividualMetadataFields(responseMap map[string]interface{}) map[string]interface{} {
+	metadata := make(map[string]interface{})
+
+	// Common metadata field names to preserve
+	metadataKeys := []string{
+		"confidence_score", "message", "source", "status", "success", "error", "code",
+		"timestamp", "version", "api_version", "response_time",
+	}
+
+	// Extract known metadata fields
+	for _, key := range metadataKeys {
+		if value, exists := responseMap[key]; exists {
+			metadata[key] = value
+		}
+	}
+
+	return metadata
 }

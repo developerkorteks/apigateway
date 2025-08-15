@@ -97,12 +97,7 @@ func SetupRoutes(router *gin.Engine, apiService *service.APIService) {
 	router.GET("/swagger-ui/", swaggerHandler.ServeSwaggerUI)
 
 	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "ok",
-			"service": "apicategorywithfallback",
-		})
-	})
+	router.GET("/health", apiHandler.HandleHealthCheck)
 
 	// Serve static files for dashboard
 	router.Static("/static", "./web/static")

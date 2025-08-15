@@ -88,14 +88,9 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "enum": [
-                            "anime",
-                            "korean-drama",
-                            "all"
-                        ],
                         "type": "string",
                         "default": "anime",
-                        "description": "Content category for API routing (anime, korean-drama, all). Internal parameter for source selection",
+                        "description": "Content category for API routing - dynamically loaded from database",
                         "name": "category",
                         "in": "query"
                     }
@@ -154,14 +149,9 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "enum": [
-                            "anime",
-                            "korean-drama",
-                            "all"
-                        ],
                         "type": "string",
                         "default": "anime",
-                        "description": "Content category for API routing (anime, korean-drama, all). Used for internal source selection only",
+                        "description": "Content category for API routing - dynamically loaded from database",
                         "name": "category",
                         "in": "query"
                     }
@@ -278,14 +268,9 @@ const docTemplate = `{
                 "summary": "Get home page content from multiple anime sources",
                 "parameters": [
                     {
-                        "enum": [
-                            "anime",
-                            "korean-drama",
-                            "all"
-                        ],
                         "type": "string",
                         "default": "anime",
-                        "description": "Content category for API routing (anime, korean-drama, all). Used internally for API source selection, not forwarded to external APIs",
+                        "description": "Content category for API routing - dynamically loaded from database",
                         "name": "category",
                         "in": "query"
                     }
@@ -330,14 +315,9 @@ const docTemplate = `{
                 "summary": "Get anime release schedule from multiple sources",
                 "parameters": [
                     {
-                        "enum": [
-                            "anime",
-                            "korean-drama",
-                            "all"
-                        ],
                         "type": "string",
                         "default": "anime",
-                        "description": "Content category for API routing (anime, korean-drama, all). Internal parameter, not sent to external APIs",
+                        "description": "Content category for API routing - dynamically loaded from database",
                         "name": "category",
                         "in": "query"
                     }
@@ -389,14 +369,9 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "enum": [
-                            "anime",
-                            "korean-drama",
-                            "all"
-                        ],
                         "type": "string",
                         "default": "anime",
-                        "description": "Content category for API routing (anime, korean-drama, all). Internal parameter for source selection",
+                        "description": "Content category for API routing - dynamically loaded from database",
                         "name": "category",
                         "in": "query"
                     }
@@ -592,6 +567,61 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/dashboard/health": {
+            "get": {
+                "description": "Retrieve current health status, response times, and availability of all registered API sources",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Get health status of all API sources",
+                "responses": {
+                    "200": {
+                        "description": "Health status data for all API sources with response times and availability",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error - failed to retrieve health status",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Basic health check endpoint to verify the service is running and operational",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Service health check",
+                "responses": {
+                    "200": {
+                        "description": "Service is healthy and operational",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
