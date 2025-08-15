@@ -81,6 +81,9 @@ func SetupRoutes(router *gin.Engine, apiService *service.APIService) {
 		// Bulk API Sources management
 		dashboard.GET("/api-sources/by-name", dashboardHandler.GetAPISourcesByName)
 		dashboard.DELETE("/api-sources/by-name", dashboardHandler.DeleteAPISourceByName)
+
+		// Cache management routes
+		dashboard.DELETE("/cache/clear", apiHandler.HandleClearCache)
 	}
 
 	// Public API routes for system information

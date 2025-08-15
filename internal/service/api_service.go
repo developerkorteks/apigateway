@@ -74,8 +74,22 @@ func (s *APIService) ProcessRequest(ctx *domain.RequestContext) (*domain.APIResp
 	// Try to get from cache first
 	if cachedData, err := s.cache.Get(cacheKey); err == nil && cachedData != nil {
 		logger.Infof("Cache hit for key: %s", cacheKey)
+
+		// Normalize cached data to ensure consistency
+		// Try to extract original source name from cached data
+		originalSource := s.extractSourceFromResponse(cachedData)
+		logger.Debugf("Extracted source from cached data: %s", originalSource)
+
+		normalizedCachedData, normErr := s.normalizeResponseStructure(cachedData, originalSource)
+		if normErr != nil {
+			logger.Warnf("Failed to normalize cached data: %v, using original", normErr)
+			normalizedCachedData = cachedData
+		} else {
+			logger.Infof("Successfully normalized cached data from original source: %s", originalSource)
+		}
+
 		return &domain.APIResponse{
-			Data:                cachedData,
+			Data:                normalizedCachedData,
 			StatusCode:          200,
 			ResponseTime:        time.Since(startTime),
 			SourceName:          "cache",
@@ -587,13 +601,224 @@ func (s *APIService) makeAPIRequest(url, sourceName string, isFallback bool) *do
 		}
 	}
 
+	// Log raw response to see actual structure from source
+	maxLen := 500
+	if len(data) < maxLen {
+		maxLen = len(data)
+	}
+	logger.Infof("🔍 Raw response from %s (first %d chars): %s", sourceName, maxLen, string(data[:maxLen]))
+
+	// Normalize response structure before returning
+	normalizedData, err := s.normalizeResponseStructure(data, sourceName)
+	if err != nil {
+		logger.Warnf("Failed to normalize response from %s: %v", sourceName, err)
+		// Return original data if normalization fails
+		return &domain.APIResponse{
+			Data:         data,
+			StatusCode:   resp.StatusCode,
+			SourceName:   sourceName,
+			IsFallback:   isFallback,
+			ResponseTime: time.Since(startTime),
+		}
+	}
+
 	return &domain.APIResponse{
-		Data:         data,
+		Data:         normalizedData,
 		StatusCode:   resp.StatusCode,
 		SourceName:   sourceName,
 		IsFallback:   isFallback,
 		ResponseTime: time.Since(startTime),
 	}
+}
+
+// normalizeResponseStructure normalizes response structures from different API sources
+// to ensure consistency across all sources
+func (s *APIService) normalizeResponseStructure(data []byte, sourceName string) ([]byte, error) {
+	logger.Infof("=== NORMALIZATION STARTED for source: %s ===", sourceName)
+	logger.Debugf("Raw data length: %d bytes", len(data))
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(data, &response); err != nil {
+		logger.Warnf("Failed to unmarshal response from %s: %v", sourceName, err)
+		// If it's not JSON, return as is
+		return data, nil
+	}
+
+	logger.Infof("✅ Successfully unmarshaled JSON from %s", sourceName)
+
+	// Log the top-level keys to see what we're working with
+	topLevelKeys := make([]string, 0, len(response))
+	for key := range response {
+		topLevelKeys = append(topLevelKeys, key)
+	}
+	logger.Infof("📋 Top-level response keys from %s: %v", sourceName, topLevelKeys)
+
+	// Check if this is a response that needs normalization
+	dataField, hasData := response["data"]
+	logger.Infof("🔍 Has 'data' field from %s: %v", sourceName, hasData)
+	if !hasData {
+		// If there's no data field, return as is
+		logger.Infof("❌ No 'data' field found, returning original response from %s", sourceName)
+		return data, nil
+	}
+
+	dataMap, isDataMap := dataField.(map[string]interface{})
+	logger.Infof("🔍 Data field is map from %s: %v", sourceName, isDataMap)
+	if !isDataMap {
+		// If data is not a map, return as is
+		logger.Infof("❌ Data field is not a map, returning original response from %s", sourceName)
+		return data, nil
+	}
+
+	// Log the keys in the data field
+	dataKeys := make([]string, 0, len(dataMap))
+	for key := range dataMap {
+		dataKeys = append(dataKeys, key)
+	}
+	logger.Infof("📋 Data field keys from %s: %v", sourceName, dataKeys)
+
+	// Check if this is the nested structure (like Gomunime)
+	// Look for nested data.data pattern
+	nestedData, hasNestedData := dataMap["data"]
+	logger.Infof("🔍 Checking for nested data.data from %s: hasNestedData=%v", sourceName, hasNestedData)
+
+	if hasNestedData {
+		// This is the Gomunime format - we need to flatten it
+		logger.Infof("🎯 FOUND nested data.data structure from %s - starting flattening...", sourceName)
+
+		if nestedDataMap, isNestedMap := nestedData.(map[string]interface{}); isNestedMap {
+			// Create normalized structure
+			normalizedResponse := make(map[string]interface{})
+
+			// Copy top-level fields (excluding data)
+			for key, value := range response {
+				if key != "data" {
+					normalizedResponse[key] = value
+				}
+			}
+
+			// Create normalized data structure
+			normalizedData := make(map[string]interface{})
+
+			// Copy nested data fields to top level of data
+			for key, value := range nestedDataMap {
+				normalizedData[key] = value
+			}
+
+			// Preserve metadata fields from the original data level
+			for key, value := range dataMap {
+				if key != "data" {
+					// Preserve fields like confidence_score, message, source at data level
+					normalizedData[key] = value
+				}
+			}
+
+			normalizedResponse["data"] = normalizedData
+
+			// Convert back to JSON
+			normalizedJSON, err := json.Marshal(normalizedResponse)
+			if err != nil {
+				return data, fmt.Errorf("failed to marshal normalized response: %v", err)
+			}
+
+			logger.Infof("✅ SUCCESS: Normalized nested response from %s", sourceName)
+			logger.Infof("🔄 Flattened data.data.* fields to data.* for %s", sourceName)
+			return normalizedJSON, nil
+		}
+	}
+
+	// No nested data.data structure found - just normalize field order
+	logger.Infof("ℹ️  No nested data.data structure from %s, normalizing field order only", sourceName)
+
+	// Check for other inconsistent patterns and normalize them
+	// This handles cases where structure might be slightly different
+	normalizedData := s.normalizeDataFields(dataMap, sourceName)
+
+	// Update the response with normalized data
+	response["data"] = normalizedData
+
+	// Convert back to JSON
+	normalizedJSON, err := json.Marshal(response)
+	if err != nil {
+		return data, fmt.Errorf("failed to marshal response after field normalization: %v", err)
+	}
+
+	logger.Infof("✅ Field order normalized for %s", sourceName)
+	return normalizedJSON, nil
+}
+
+// normalizeDataFields ensures consistent field positioning within the data object
+func (s *APIService) normalizeDataFields(dataMap map[string]interface{}, sourceName string) map[string]interface{} {
+	normalizedMap := make(map[string]interface{})
+
+	// Define the standard field order and ensure consistency
+	priorityFields := []string{
+		"anime_slug", "cover", "details", "episode_list", "recommendations", "rating",
+		"confidence_score", "message", "source",
+	}
+
+	// First, add priority fields in order if they exist
+	for _, field := range priorityFields {
+		if value, exists := dataMap[field]; exists {
+			normalizedMap[field] = value
+		}
+	}
+
+	// Then add any remaining fields
+	for key, value := range dataMap {
+		if _, exists := normalizedMap[key]; !exists {
+			normalizedMap[key] = value
+		}
+	}
+
+	// Ensure confidence_score is always present with a default value
+	if _, exists := normalizedMap["confidence_score"]; !exists {
+		normalizedMap["confidence_score"] = 1.0
+	}
+
+	// Ensure source is always present
+	if _, exists := normalizedMap["source"]; !exists {
+		normalizedMap["source"] = sourceName
+	}
+
+	return normalizedMap
+}
+
+// extractSourceFromResponse tries to extract the original source name from response data
+func (s *APIService) extractSourceFromResponse(data []byte) string {
+	var response map[string]interface{}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return "unknown"
+	}
+
+	// Try to find source in data.source
+	if dataField, hasData := response["data"]; hasData {
+		if dataMap, isMap := dataField.(map[string]interface{}); isMap {
+			if source, hasSource := dataMap["source"]; hasSource {
+				if sourceStr, isString := source.(string); isString {
+					return sourceStr
+				}
+			}
+			// Check nested data.data.source (for unnormalized Gomunime format)
+			if nestedData, hasNestedData := dataMap["data"]; hasNestedData {
+				if nestedMap, isNestedMap := nestedData.(map[string]interface{}); isNestedMap {
+					if source, hasSource := nestedMap["source"]; hasSource {
+						if sourceStr, isString := source.(string); isString {
+							return sourceStr
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return "cache" // fallback
+}
+
+// ClearCacheKey clears a specific cache key to force fresh normalized response
+func (s *APIService) ClearCacheKey(category, endpoint string, params map[string]string) error {
+	cacheKey := s.cache.GenerateKey(category, endpoint, params)
+	return s.cache.Delete(cacheKey)
 }
 
 // buildURL constructs the full URL with parameters (excluding internal parameters)

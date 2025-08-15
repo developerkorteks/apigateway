@@ -266,6 +266,9 @@ func (h *APIHandler) createEnhancedResponse(ctx *domain.RequestContext, response
 		originalData = string(response.Data)
 	}
 
+	// Unwrap nested API responses (like gomunime) to prevent double nesting
+	originalData = unwrapNestedAPIResponse(originalData, response.SourceName)
+
 	// Calculate total time
 	totalTime := time.Since(startTime)
 
@@ -414,4 +417,83 @@ func (h *APIHandler) processDetailRequest(c *gin.Context, ctx *domain.RequestCon
 
 	// Send enhanced response with all metadata
 	sendEnhancedResponse(c, enhancedResponse)
+}
+
+// HandleClearCache handles cache clearing for testing normalization
+// @Summary Clear cache for specific endpoint
+// @Description Clear cache to force fresh normalized responses from API sources
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param endpoint query string false "Endpoint to clear cache for (e.g., /api/v1/anime-detail)"
+// @Param category query string false "Category to clear cache for" default(anime)
+// @Param anime_slug query string false "Anime slug parameter for specific cache key"
+// @Success 200 {object} map[string]interface{} "Cache cleared successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Router /dashboard/cache/clear [delete]
+func (h *APIHandler) HandleClearCache(c *gin.Context) {
+	endpoint := c.DefaultQuery("endpoint", "/api/v1/anime-detail")
+	category := c.DefaultQuery("category", "anime")
+
+	// Extract all query parameters for cache key
+	parameters := make(map[string]string)
+	for key, values := range c.Request.URL.Query() {
+		if len(values) > 0 && key != "endpoint" && key != "category" {
+			parameters[key] = values[0]
+		}
+	}
+
+	// If anime_slug is provided, also try to clear with common parameter combinations
+	if animeSlug := parameters["anime_slug"]; animeSlug != "" {
+		// Clear multiple parameter combinations for the same anime
+		parameterCombinations := []map[string]string{
+			{"anime_slug": animeSlug},
+			{"id": animeSlug, "anime_slug": animeSlug},
+			{"slug": animeSlug, "anime_slug": animeSlug},
+			{"id": animeSlug, "slug": animeSlug, "anime_slug": animeSlug},
+			parameters, // Original parameters
+		}
+
+		clearedCount := 0
+		for _, params := range parameterCombinations {
+			if err := h.apiService.ClearCacheKey(category, endpoint, params); err == nil {
+				clearedCount++
+				logger.Infof("Cleared cache key with params: %+v", params)
+			}
+		}
+
+		logger.Infof("Cache clearing completed: cleared %d variations for %s", clearedCount, animeSlug)
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": fmt.Sprintf("Cache cleared successfully (%d variations)", clearedCount),
+			"cleared": gin.H{
+				"endpoint":   endpoint,
+				"category":   category,
+				"anime_slug": animeSlug,
+				"variations": clearedCount,
+			},
+		})
+		return
+	}
+
+	err := h.apiService.ClearCacheKey(category, endpoint, parameters)
+	if err != nil {
+		logger.Errorf("Failed to clear cache: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": fmt.Sprintf("Failed to clear cache: %v", err),
+		})
+		return
+	}
+
+	logger.Infof("Cache cleared for endpoint: %s, category: %s, params: %+v", endpoint, category, parameters)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Cache cleared successfully",
+		"cleared": gin.H{
+			"endpoint":   endpoint,
+			"category":   category,
+			"parameters": parameters,
+		},
+	})
 }

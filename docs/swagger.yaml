@@ -391,6 +391,41 @@ paths:
       summary: Search anime from multiple sources with fallback
       tags:
       - Search
+  /dashboard/cache/clear:
+    delete:
+      consumes:
+      - application/json
+      description: Clear cache to force fresh normalized responses from API sources
+      parameters:
+      - description: Endpoint to clear cache for (e.g., /api/v1/anime-detail)
+        in: query
+        name: endpoint
+        type: string
+      - default: anime
+        description: Category to clear cache for
+        in: query
+        name: category
+        type: string
+      - description: Anime slug parameter for specific cache key
+        in: query
+        name: anime_slug
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cache cleared successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Clear cache for specific endpoint
+      tags:
+      - Admin
 schemes:
 - http
 - https
