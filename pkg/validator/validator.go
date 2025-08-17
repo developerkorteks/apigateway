@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -28,6 +29,107 @@ type HomeResponse struct {
 type JadwalRilisResponse struct {
 	BaseResponse
 	Data map[string][]ScheduleItem `json:"data"`
+}
+
+// UnmarshalJSON is a custom unmarshaler for JadwalRilisResponse
+func (j *JadwalRilisResponse) UnmarshalJSON(data []byte) error {
+	// First unmarshal the base response
+	type Alias JadwalRilisResponse
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(j),
+	}
+
+	// Create a decoder that preserves number types
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+
+	// Try to decode into our structure
+	if err := decoder.Decode(aux); err != nil {
+		// If that fails, try a more flexible approach
+		var raw map[string]interface{}
+		if err := json.Unmarshal(data, &raw); err != nil {
+			return err
+		}
+
+		// Extract base response fields
+		if cs, ok := raw["confidence_score"]; ok {
+			switch v := cs.(type) {
+			case float64:
+				j.ConfidenceScore = v
+			case json.Number:
+				f, _ := v.Float64()
+				j.ConfidenceScore = f
+			}
+		}
+		if msg, ok := raw["message"]; ok {
+			if s, ok := msg.(string); ok {
+				j.Message = s
+			}
+		}
+		if src, ok := raw["source"]; ok {
+			if s, ok := src.(string); ok {
+				j.Source = s
+			}
+		}
+
+		// Extract data field
+		if dataField, ok := raw["data"]; ok {
+			if dataMap, ok := dataField.(map[string]interface{}); ok {
+				j.Data = make(map[string][]ScheduleItem)
+
+				// Process each day's data
+				for day, items := range dataMap {
+					if itemsList, ok := items.([]interface{}); ok {
+						for _, item := range itemsList {
+							if itemMap, ok := item.(map[string]interface{}); ok {
+								scheduleItem := ScheduleItem{}
+
+								// Extract required fields
+								if title, ok := itemMap["title"].(string); ok {
+									scheduleItem.Title = title
+								}
+								if url, ok := itemMap["url"].(string); ok {
+									scheduleItem.URL = url
+								}
+								if slug, ok := itemMap["anime_slug"].(string); ok {
+									scheduleItem.AnimeSlug = slug
+								}
+								if cover, ok := itemMap["cover_url"].(string); ok {
+									scheduleItem.CoverURL = cover
+								}
+								if typ, ok := itemMap["type"].(string); ok {
+									scheduleItem.Type = typ
+								}
+
+								// Handle score which can be string or number
+								scheduleItem.Score = itemMap["score"]
+
+								// Handle genres
+								if genres, ok := itemMap["genres"].([]interface{}); ok {
+									for _, g := range genres {
+										if genre, ok := g.(string); ok {
+											scheduleItem.Genres = append(scheduleItem.Genres, genre)
+										}
+									}
+								}
+
+								// Handle release time
+								if rt, ok := itemMap["release_time"].(string); ok {
+									scheduleItem.ReleaseTime = rt
+								}
+
+								j.Data[day] = append(j.Data[day], scheduleItem)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // JadwalRilisDayResponse represents the structure for /api/v1/jadwal-rilis/{day} endpoint
@@ -120,14 +222,14 @@ type MovieItem struct {
 }
 
 type ScheduleItem struct {
-	Title       string   `json:"title"`
-	URL         string   `json:"url"`
-	AnimeSlug   string   `json:"anime_slug"`
-	CoverURL    string   `json:"cover_url"`
-	Type        string   `json:"type"`
-	Score       string   `json:"score"`
-	Genres      []string `json:"genres"`
-	ReleaseTime string   `json:"release_time"`
+	Title       string      `json:"title"`
+	URL         string      `json:"url"`
+	AnimeSlug   string      `json:"anime_slug"`
+	CoverURL    string      `json:"cover_url"`
+	Type        string      `json:"type"`
+	Score       interface{} `json:"score"` // Changed to interface{} to handle both string and numeric values
+	Genres      []string    `json:"genres"`
+	ReleaseTime string      `json:"release_time"`
 }
 
 type EpisodeListItem struct {
@@ -286,15 +388,120 @@ func validateHomeResponse(data []byte) error {
 }
 
 func validateJadwalRilisResponse(data []byte) error {
+	// Use our custom unmarshaler to handle the response
 	var resp JadwalRilisResponse
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return fmt.Errorf("invalid jadwal-rilis response structure: %v", err)
 	}
 
-	for _, dayItems := range resp.Data {
-		for _, item := range dayItems {
+	// Check if data field is populated
+	if resp.Data == nil || len(resp.Data) == 0 {
+		return fmt.Errorf("empty or missing data field")
+	}
+
+	// Validate each day's schedule items
+	for day, dayItems := range resp.Data {
+		if len(dayItems) == 0 {
+			continue // Skip empty days
+		}
+
+		for i, item := range dayItems {
 			if err := validateRequiredFields(item, []string{"title", "url", "anime_slug", "cover_url"}); err != nil {
-				return fmt.Errorf("invalid jadwal-rilis item: %v", err)
+				return fmt.Errorf("invalid jadwal-rilis item for day %s at index %d: %v", day, i, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// UnmarshalJSON is a custom unmarshaler for JadwalRilisDayResponse
+func (j *JadwalRilisDayResponse) UnmarshalJSON(data []byte) error {
+	// First unmarshal the base response
+	type Alias JadwalRilisDayResponse
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(j),
+	}
+
+	// Create a decoder that preserves number types
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+
+	// Try to decode into our structure
+	if err := decoder.Decode(aux); err != nil {
+		// If that fails, try a more flexible approach
+		var raw map[string]interface{}
+		if err := json.Unmarshal(data, &raw); err != nil {
+			return err
+		}
+
+		// Extract base response fields
+		if cs, ok := raw["confidence_score"]; ok {
+			switch v := cs.(type) {
+			case float64:
+				j.ConfidenceScore = v
+			case json.Number:
+				f, _ := v.Float64()
+				j.ConfidenceScore = f
+			}
+		}
+		if msg, ok := raw["message"]; ok {
+			if s, ok := msg.(string); ok {
+				j.Message = s
+			}
+		}
+		if src, ok := raw["source"]; ok {
+			if s, ok := src.(string); ok {
+				j.Source = s
+			}
+		}
+
+		// Extract data field
+		if dataField, ok := raw["data"]; ok {
+			if itemsList, ok := dataField.([]interface{}); ok {
+				for _, item := range itemsList {
+					if itemMap, ok := item.(map[string]interface{}); ok {
+						scheduleItem := ScheduleItem{}
+
+						// Extract required fields
+						if title, ok := itemMap["title"].(string); ok {
+							scheduleItem.Title = title
+						}
+						if url, ok := itemMap["url"].(string); ok {
+							scheduleItem.URL = url
+						}
+						if slug, ok := itemMap["anime_slug"].(string); ok {
+							scheduleItem.AnimeSlug = slug
+						}
+						if cover, ok := itemMap["cover_url"].(string); ok {
+							scheduleItem.CoverURL = cover
+						}
+						if typ, ok := itemMap["type"].(string); ok {
+							scheduleItem.Type = typ
+						}
+
+						// Handle score which can be string or number
+						scheduleItem.Score = itemMap["score"]
+
+						// Handle genres
+						if genres, ok := itemMap["genres"].([]interface{}); ok {
+							for _, g := range genres {
+								if genre, ok := g.(string); ok {
+									scheduleItem.Genres = append(scheduleItem.Genres, genre)
+								}
+							}
+						}
+
+						// Handle release time
+						if rt, ok := itemMap["release_time"].(string); ok {
+							scheduleItem.ReleaseTime = rt
+						}
+
+						j.Data = append(j.Data, scheduleItem)
+					}
+				}
 			}
 		}
 	}
@@ -303,14 +510,21 @@ func validateJadwalRilisResponse(data []byte) error {
 }
 
 func validateJadwalRilisDayResponse(data []byte) error {
+	// Use our custom unmarshaler to handle the response
 	var resp JadwalRilisDayResponse
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return fmt.Errorf("invalid jadwal-rilis day response structure: %v", err)
 	}
 
-	for _, item := range resp.Data {
+	// Check if data field is populated
+	if resp.Data == nil || len(resp.Data) == 0 {
+		return fmt.Errorf("empty or missing data field")
+	}
+
+	// Validate each schedule item
+	for i, item := range resp.Data {
 		if err := validateRequiredFields(item, []string{"title", "url", "anime_slug", "cover_url"}); err != nil {
-			return fmt.Errorf("invalid jadwal-rilis day item: %v", err)
+			return fmt.Errorf("invalid jadwal-rilis day item at index %d: %v", i, err)
 		}
 	}
 
