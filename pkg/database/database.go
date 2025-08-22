@@ -613,6 +613,17 @@ func (db *DB) CreateCategory(name string, isActive bool) error {
 	return err
 }
 
+// GetCategoryIDByName returns category ID by name
+func (db *DB) GetCategoryIDByName(name string) (int, error) {
+	query := `SELECT id FROM categories WHERE name = ? AND is_active = TRUE`
+	var id int
+	err := db.QueryRow(query, name).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
 // UpdateCategory updates an existing category
 func (db *DB) UpdateCategory(id int, name string, isActive bool) error {
 	query := `UPDATE categories SET name = ?, is_active = ? WHERE id = ?`

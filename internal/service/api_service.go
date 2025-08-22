@@ -1136,9 +1136,40 @@ func (s *APIService) GetStatistics() (map[string]interface{}, error) {
 	return s.db.GetStatistics()
 }
 
-// CreateCategory creates a new category
+// CreateCategory creates a new category with standard endpoints
 func (s *APIService) CreateCategory(name string, isActive bool) error {
-	return s.db.CreateCategory(name, isActive)
+	// Create the category first
+	err := s.db.CreateCategory(name, isActive)
+	if err != nil {
+		return err
+	}
+
+	// Get the created category ID
+	categoryID, err := s.db.GetCategoryIDByName(name)
+	if err != nil {
+		return fmt.Errorf("failed to get category ID after creation: %v", err)
+	}
+
+	// Add standard endpoints for the category
+	standardEndpoints := []string{
+		"/api/v1/home",
+		"/api/v1/jadwal-rilis",
+		"/api/v1/anime-terbaru",
+		"/api/v1/movie",
+		"/api/v1/anime-detail",
+		"/api/v1/episode-detail",
+		"/api/v1/search",
+	}
+
+	for _, path := range standardEndpoints {
+		_, err := s.db.CreateEndpoint(categoryID, path)
+		if err != nil {
+			// Log error but continue with other endpoints
+			fmt.Printf("Warning: Failed to create endpoint %s for category %s: %v\n", path, name, err)
+		}
+	}
+
+	return nil
 }
 
 // UpdateCategory updates an existing category
