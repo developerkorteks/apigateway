@@ -13,7 +13,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
+	"github.com/joho/godotenv"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -46,11 +46,17 @@ import (
 // @tag.description Health check endpoints
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found")
+	}
+
+	cfg := config.Load()
 	// Initialize logger
 	logger.Init()
 
 	// Load configuration
-	cfg := config.Load()
+
 
 	// Initialize database
 	db, err := database.Init(cfg.DatabasePath, cfg)
