@@ -1677,7 +1677,7 @@ func (s *APIService) bruteforceDetailSources(primarySources []database.APISource
 		} else {
 			logger.Warnf("Received nil or closed channel in firstValidChan")
 		}
-	case <-time.After(10 * time.Second): // Fixed 10 second timeout (was: 2s per source) // Dynamic timeout based on source count
+	case <-time.After(20 * time.Second): // Fixed 20 second timeout for slow episode-detail API responses
 		// Timeout - collect any results we got
 		logger.Warnf("Bruteforce timeout reached, collecting partial results")
 
