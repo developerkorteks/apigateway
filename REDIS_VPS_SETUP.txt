@@ -1,0 +1,125 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                    REDIS SETUP FOR VPS                                   ║
+║                  (Quick Reference Card)                                  ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+🎯 YOUR VPS REDIS CONFIGURATION:
+   Port: 62379 (from PM2 logs)
+   Process: redis-local (managed by PM2)
+   Status: ✅ RUNNING
+
+═══════════════════════════════════════════════════════════════════════════
+
+📋 STEP-BY-STEP SETUP:
+
+1️⃣  Upload testing scripts to VPS:
+   $ cd ~/apigateway
+   $ ls -l test_redis*.sh setup_redis*.sh
+   
+2️⃣  Make scripts executable:
+   $ chmod +x test_redis_connection.sh
+   $ chmod +x test_redis_simple.sh
+   $ chmod +x setup_redis_config.sh
+
+3️⃣  Auto-configure .env:
+   $ ./setup_redis_config.sh
+   
+   This will:
+   - Scan for Redis on ports: 6379, 6380, 62379, 7000
+   - Auto-detect your Redis on port 62379
+   - Update .env automatically
+   - Backup old .env
+
+4️⃣  Verify .env configuration:
+   $ cat .env | grep REDIS
+   
+   Expected output:
+   REDIS_ADDR=127.0.0.1:62379
+   REDIS_DB=0
+
+5️⃣  Test Redis connection:
+   $ ./test_redis_connection.sh
+   
+   Expected: All tests ✅ PASS
+
+6️⃣  Restart API Gateway:
+   $ pm2 restart apigateway --update-env
+
+7️⃣  Verify Redis connection in logs:
+   $ pm2 logs apigateway --lines 50 | grep -i redis
+   
+   Expected log:
+   "Redis connected successfully"
+
+═══════════════════════════════════════════════════════════════════════════
+
+🧪 MANUAL TESTING (Optional):
+
+Test Redis directly:
+$ redis-cli -h 127.0.0.1 -p 62379 PING
+Expected: PONG
+
+Test API with cache:
+$ time curl http://localhost:58080/api/v1/anime-terbaru?category=anime
+First request: ~15 seconds (no cache)
+
+$ time curl http://localhost:58080/api/v1/anime-terbaru?category=anime
+Second request: ~0.1 seconds (cached) ⚡
+
+═══════════════════════════════════════════════════════════════════════════
+
+❌ TROUBLESHOOTING:
+
+Problem: "Cannot connect to port 62379"
+Solution:
+   $ pm2 list
+   $ pm2 restart redis-local
+   $ pm2 logs redis-local
+
+Problem: ".env not updated"
+Solution:
+   $ vim .env
+   # Manually add:
+   REDIS_ADDR=127.0.0.1:62379
+
+Problem: "App not using Redis"
+Solution:
+   $ pm2 restart apigateway --update-env
+   # The --update-env flag is important!
+
+═══════════════════════════════════════════════════════════════════════════
+
+✅ SUCCESS CHECKLIST:
+
+[ ] Scripts uploaded to ~/apigateway/
+[ ] Scripts are executable (chmod +x)
+[ ] ./setup_redis_config.sh completed
+[ ] .env shows REDIS_ADDR=127.0.0.1:62379
+[ ] ./test_redis_connection.sh passes
+[ ] pm2 restart apigateway --update-env executed
+[ ] Logs show "Redis connected successfully"
+[ ] API responses are fast (~0.1s for cached)
+
+═══════════════════════════════════════════════════════════════════════════
+
+📞 QUICK COMMANDS:
+
+Check Redis status:
+$ pm2 list | grep redis
+
+View Redis logs:
+$ pm2 logs redis-local --lines 100
+
+Test PING:
+$ redis-cli -h 127.0.0.1 -p 62379 PING
+
+View cache keys:
+$ redis-cli -h 127.0.0.1 -p 62379 KEYS "api:*"
+
+Clear all cache:
+$ redis-cli -h 127.0.0.1 -p 62379 FLUSHDB
+
+Monitor Redis activity:
+$ redis-cli -h 127.0.0.1 -p 62379 MONITOR
+
+═══════════════════════════════════════════════════════════════════════════
