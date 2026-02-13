@@ -1568,6 +1568,7 @@ func (s *APIService) bruteforceDetailSources(primarySources []database.APISource
 	for _, source := range primarySources {
 		// Add primary source
 		primaryURL := s.buildURL(source.BaseURL, ctx.Endpoint, ctx.Parameters)
+		logger.Infof("🔧 BRUTEFORCE DEBUG: source=%s, baseURL=%s, endpoint=%s, built_url=%s", source.SourceName, source.BaseURL, ctx.Endpoint, primaryURL)
 		allSources = append(allSources, bruteforceSource{
 			URL:        primaryURL,
 			SourceName: source.SourceName,
@@ -1676,7 +1677,7 @@ func (s *APIService) bruteforceDetailSources(primarySources []database.APISource
 		} else {
 			logger.Warnf("Received nil or closed channel in firstValidChan")
 		}
-	case <-time.After(time.Duration(len(allSources)) * time.Second * 2): // Dynamic timeout based on source count
+	case <-time.After(10 * time.Second): // Fixed 10 second timeout (was: 2s per source) // Dynamic timeout based on source count
 		// Timeout - collect any results we got
 		logger.Warnf("Bruteforce timeout reached, collecting partial results")
 
